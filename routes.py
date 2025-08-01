@@ -19,6 +19,32 @@ student_bp = Blueprint('student', __name__)
 teacher_bp = Blueprint('teacher', __name__)
 manager_bp = Blueprint('manager', __name__)
 
+# Helper function for error responses
+def error_response(error_code, message, details=None, status_code=400):
+    """Standardized error response format"""
+    response_data = {
+        'error': error_code,
+        'message': message,
+        'timestamp': datetime.utcnow().isoformat(),
+        'status_code': status_code
+    }
+    if details:
+        response_data['details'] = details
+    return jsonify(response_data), status_code
+
+# Helper function for success responses
+def success_response(message, data=None, status_code=200):
+    """Standardized success response format"""
+    response_data = {
+        'success': True,
+        'message': message,
+        'timestamp': datetime.utcnow().isoformat(),
+        'status_code': status_code
+    }
+    if data:
+        response_data['data'] = data
+    return jsonify(response_data), status_code
+
 # ====================== AUTH ROUTES ======================
 
 @auth_bp.route('/register', methods=['POST'])
@@ -29,22 +55,40 @@ def register():
         
         # Required fields validation
         required_fields = ['username', 'password', 'full_name', 'user_type']
-        for field in required_fields:
-            if not data.get(field):
-                return jsonify({'message': f'{field} is required'}), 400
+        missing_fields = [field for field in required_fields if not data.get(field)]
+        if missing_fields:
+            return error_response(
+                'MISSING_REQUIRED_FIELDS',
+                'Thiếu các trường bắt buộc.',
+                {'missing_fields': missing_fields, 'required_fields': required_fields}
+            )
         
         # Check if username already exists
         if User.query.filter_by(username=data['username']).first():
-            return jsonify({'message': 'Username already exists'}), 409
+            return error_response(
+                'USERNAME_EXISTS',
+                'Tên đăng nhập đã tồn tại.',
+                {'username': data['username'], 'suggestion': 'Please choose a different username'},
+                409
+            )
         
         # Check if email already exists (if provided)
         if data.get('email') and User.query.filter_by(email=data['email']).first():
-            return jsonify({'message': 'Email already exists'}), 409
+            return error_response(
+                'EMAIL_EXISTS', 
+                'Email đã được sử dụng.',
+                {'email': data['email']},
+                409
+            )
         
         # Validate user type
         valid_user_types = [e.value for e in UserType]
         if data['user_type'] not in valid_user_types:
-            return jsonify({'message': 'Invalid user type', 'valid_types': valid_user_types}), 400
+            return error_response(
+                'INVALID_USER_TYPE',
+                'Loại người dùng không hợp lệ.',
+                {'provided_type': data['user_type'], 'valid_types': valid_user_types}
+            )
         
         # Create new user
         user = User(
@@ -81,14 +125,20 @@ def register():
         
         db.session.commit()
         
-        return jsonify({
-            'message': 'User registered successfully',
-            'user': user.to_dict()
-        }), 201
+        return success_response(
+            'Đăng ký tài khoản thành công.',
+            {'user': user.to_dict()},
+            201
+        )
         
     except Exception as e:
         db.session.rollback()
-        return jsonify({'message': 'Registration failed', 'error': str(e)}), 500
+        return error_response(
+            'REGISTRATION_FAILED',
+            'Đăng ký thất bại.',
+            {'error_details': str(e)},
+            500
+        )
 
 @auth_bp.route('/login', methods=['POST'])
 def login():
@@ -97,28 +147,36 @@ def login():
         data = request.get_json()
         
         if not data.get('username') or not data.get('password'):
-            return jsonify({'message': 'Username and password are required'}), 400
+            return error_response(
+                'MISSING_CREDENTIALS',
+                'Tên đăng nhập và mật khẩu là bắt buộc.',
+                {'required_fields': ['username', 'password']}
+            )
         
         user = User.query.filter_by(username=data['username']).first()
         
         if not user or not user.check_password(data['password']):
-            return jsonify({'message': 'Invalid credentials'}), 401
+            return error_response(
+                'INVALID_CREDENTIALS',
+                'Tên đăng nhập hoặc mật khẩu không đúng.',
+                {'username': data['username']},
+                401
+            )
         
         # Update last login
         user.update_last_login()
         
         # Create tokens
         access_token = create_access_token(
-            identity=str(user.user_id),
+            identity=user.user_id,
             additional_claims={
                 'username': user.username,
                 'user_type': user.user_type,
                 'full_name': user.full_name
             }
         )
-        # refresh_token = create_refresh_token(identity=user.user_id)
-        refresh_token = create_refresh_token(identity=str(user.user_id))
-
+        refresh_token = create_refresh_token(identity=user.user_id)
+        
         # Get user-specific data
         user_data = user.to_dict()
         if user.user_type == UserType.STUDENT.value and user.student:
