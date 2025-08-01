@@ -7,7 +7,7 @@
 	},
 	"item": [
 		{
-			"name": "Teacher",
+			"name": "Teacher Endpoints",
 			"item": [
 				{
 					"name": "Get Teaching Schedule",
@@ -224,7 +224,7 @@
 			]
 		},
 		{
-			"name": "Manage",
+			"name": "Manage Endpoints",
 			"item": [
 				{
 					"name": "Get System Overview",
@@ -571,7 +571,7 @@
 			]
 		},
 		{
-			"name": "Student",
+			"name": "Student Endpoints",
 			"item": [
 				{
 					"name": "Get Student Notifications",
@@ -748,7 +748,7 @@
 			]
 		},
 		{
-			"name": "Auth",
+			"name": "Authentication Endpoints",
 			"item": [
 				{
 					"name": "Login",
