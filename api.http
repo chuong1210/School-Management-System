@@ -1,0 +1,251 @@
+### School Management System API Tests
+### Base URL
+@baseUrl = http://localhost:5000
+
+### Variables (will be set after login)
+@accessToken = 
+@refreshToken = 
+
+###
+### 1. Health Check
+GET {{baseUrl}}/health
+
+###
+### 2. System Info
+GET {{baseUrl}}/
+
+###
+### ========================= AUTH ENDPOINTS =========================
+
+### 3. Register Student
+POST {{baseUrl}}/api/auth/register
+Content-Type: application/json
+
+{
+  "username": "teststudent",
+  "password": "123456",
+  "full_name": "Test Student",
+  "email": "teststudent@school.edu.vn",
+  "phone_number": "0999888777",
+  "user_type": "Học sinh",
+  "student_code": "SV999",
+  "date_of_birth": "2000-01-01",
+  "major": "Công nghệ thông tin",
+  "enrollment_date": "2024-09-01"
+}
+
+###
+### 4. Register Teacher
+POST {{baseUrl}}/api/auth/register
+Content-Type: application/json
+
+{
+  "username": "testteacher",
+  "password": "123456",
+  "full_name": "Test Teacher",
+  "email": "testteacher@school.edu.vn",
+  "phone_number": "0999888778",
+  "user_type": "Giáo viên",
+  "teacher_code": "GV999",
+  "department": "Khoa Công nghệ thông tin",
+  "hire_date": "2020-09-01"
+}
+
+###
+### 5. Register Manager
+POST {{baseUrl}}/api/auth/register
+Content-Type: application/json
+
+{
+  "username": "testmanager",
+  "password": "123456",
+  "full_name": "Test Manager",
+  "email": "testmanager@school.edu.vn",
+  "phone_number": "0999888779",
+  "user_type": "Cán bộ quản lý"
+}
+
+###
+### 6. Login as Student
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "student001",
+  "password": "123456"
+}
+
+###
+### 7. Login as Teacher
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "teacher001",
+  "password": "123456"
+}
+
+###
+### 8. Login as Manager
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "admin",
+  "password": "123456"
+}
+
+###
+### 9. Get Profile (requires token)
+GET {{baseUrl}}/api/auth/profile
+Authorization: Bearer {{accessToken}}
+
+###
+### 10. Refresh Token
+POST {{baseUrl}}/api/auth/refresh
+Authorization: Bearer {{refreshToken}}
+
+###
+### 11. Logout
+POST {{baseUrl}}/api/auth/logout
+Authorization: Bearer {{accessToken}}
+
+###
+### ========================= STUDENT ENDPOINTS =========================
+
+### 12. Get Student Notifications
+GET {{baseUrl}}/api/student/notifications
+Authorization: Bearer {{accessToken}}
+
+###
+### 13. Get Student Schedule
+GET {{baseUrl}}/api/student/schedule
+Authorization: Bearer {{accessToken}}
+
+###
+### 14. Get Available Classes
+GET {{baseUrl}}/api/student/available-classes
+Authorization: Bearer {{accessToken}}
+
+###
+### 15. Enroll in Class
+POST {{baseUrl}}/api/student/enroll
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "class_id": 3
+}
+
+###
+### ========================= TEACHER ENDPOINTS =========================
+
+### 16. Get Teaching Schedule
+GET {{baseUrl}}/api/teacher/teaching-schedule
+Authorization: Bearer {{accessToken}}
+
+###
+### 17. Get Teacher Notifications
+GET {{baseUrl}}/api/teacher/notifications
+Authorization: Bearer {{accessToken}}
+
+###
+### 18. Get Students in Classes
+GET {{baseUrl}}/api/teacher/students
+Authorization: Bearer {{accessToken}}
+
+###
+### 19. Get Assigned Courses
+GET {{baseUrl}}/api/teacher/courses
+Authorization: Bearer {{accessToken}}
+
+###
+### ========================= MANAGER ENDPOINTS =========================
+
+### 20. Get System Overview
+GET {{baseUrl}}/api/manager/overview
+Authorization: Bearer {{accessToken}}
+
+###
+### 21. Get All Users (with pagination)
+GET {{baseUrl}}/api/manager/all-users?page=1&per_page=10
+Authorization: Bearer {{accessToken}}
+
+###
+### 22. Get All Users by Type
+GET {{baseUrl}}/api/manager/all-users?user_type=Học sinh
+Authorization: Bearer {{accessToken}}
+
+###
+### 23. Get All Classes
+GET {{baseUrl}}/api/manager/all-classes?page=1&per_page=10
+Authorization: Bearer {{accessToken}}
+
+###
+### 24. Create New Class
+POST {{baseUrl}}/api/manager/create-class
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "course_id": 1,
+  "teacher_id": 1,
+  "semester": "Học kỳ 2",
+  "academic_year": "2024-2025",
+  "max_capacity": 50,
+  "status": "Mở"
+}
+
+###
+### 25. Assign Teacher to Class
+POST {{baseUrl}}/api/manager/assign-teacher
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "class_id": 3,
+  "teacher_id": 2
+}
+
+###
+### ========================= ERROR TESTING =========================
+
+### 26. Access Student Endpoint without Token
+GET {{baseUrl}}/api/student/notifications
+
+###
+### 27. Access Manager Endpoint as Student (should fail)
+GET {{baseUrl}}/api/manager/overview
+Authorization: Bearer {{accessToken}}
+
+###
+### 28. Login with Invalid Credentials
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "invalid",
+  "password": "invalid"
+}
+
+###
+### 29. Register Duplicate Username
+POST {{baseUrl}}/api/auth/register
+Content-Type: application/json
+
+{
+  "username": "admin",
+  "password": "123456",
+  "full_name": "Duplicate Admin",
+  "user_type": "Cán bộ quản lý"
+}
+
+###
+### 30. Enroll in Non-existent Class
+POST {{baseUrl}}/api/student/enroll
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "class_id": 999
+}
