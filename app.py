@@ -7,7 +7,7 @@ from config import config
 from models import db
 from routes import auth_bp, student_bp, teacher_bp, manager_bp
 from decorators import init_redis
-
+from flask_migrate import Migrate
 def create_app(config_name=None):
     """Application factory"""
     app = Flask(__name__)
@@ -18,6 +18,7 @@ def create_app(config_name=None):
     
     # Initialize extensions
     db.init_app(app)
+    migrate = Migrate(app, db)  # Initialize Flask-Migrate
     jwt = JWTManager(app)
     CORS(app, origins=app.config['CORS_ORIGINS'])
     
@@ -39,18 +40,18 @@ def create_app(config_name=None):
             'status_code': 401
         }), 401
 
-    @jwt.invalid_token_loader
-    def invalid_token_callback(error):
-        return jsonify({
-            'error': 'INVALID_TOKEN',
-            'message': 'Token không hợp lệ.',
-            'details': {
-                'reason': str(error),
-                'action_required': 'Please provide a valid JWT token'
-            },
-            'timestamp': datetime.utcnow().isoformat(),
-            'status_code': 401
-        }), 401
+    # @jwt.invalid_token_loader
+    # def invalid_token_callback(error):
+    #     return jsonify({
+    #         'error': 'INVALID_TOKEN',
+    #         'message': 'Token không hợp lệ.',
+    #         'details': {
+    #             'reason': str(error),
+    #             'action_required': 'Please provide a valid JWT token'
+    #         },
+    #         'timestamp': datetime.utcnow().isoformat(),
+    #         'status_code': 401
+    #     }), 401
 
     @jwt.unauthorized_loader
     def missing_token_callback(error):

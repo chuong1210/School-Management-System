@@ -11,3 +11,6 @@ marshmallow==3.20.1
 marshmallow-sqlalchemy==0.29.0
 cryptography==41.0.7
 email-validator==2.1.0
+google-adk
+Flask-Migrate==4.0.4
+Flask-Login==0.6.2

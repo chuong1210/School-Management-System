@@ -168,14 +168,14 @@ def login():
         
         # Create tokens
         access_token = create_access_token(
-            identity=user.user_id,
+            identity=str(user.user_id),
             additional_claims={
                 'username': user.username,
                 'user_type': user.user_type,
                 'full_name': user.full_name
             }
         )
-        refresh_token = create_refresh_token(identity=user.user_id)
+        refresh_token = create_refresh_token(identity=str(user.user_id))
         
         # Get user-specific data
         user_data = user.to_dict()
@@ -617,59 +617,59 @@ def get_system_overview(current_user):
     except Exception as e:
         return jsonify({'message': 'Failed to get overview', 'error': str(e)}), 500
 
-@manager_bp.route('/create-class', methods=['POST'])
-@manager_required
-def create_class(current_user):
-    """Create a new class"""
-    try:
-        data = request.get_json()
+# @manager_bp.route('/create-class', methods=['POST'])
+# @manager_required
+# def create_class(current_user):
+#     """Create a new class"""
+#     try:
+#         data = request.get_json()
         
-        required_fields = ['course_id', 'semester', 'academic_year', 'max_capacity']
-        for field in required_fields:
-            if not data.get(field):
-                return jsonify({'message': f'{field} is required'}), 400
+#         required_fields = ['course_id', 'semester', 'academic_year', 'max_capacity']
+#         for field in required_fields:
+#             if not data.get(field):
+#                 return jsonify({'message': f'{field} is required'}), 400
         
-        # Verify course exists
-        course = Course.query.get(data['course_id'])
-        if not course:
-            return jsonify({'message': 'Course not found'}), 404
+#         # Verify course exists
+#         course = Course.query.get(data['course_id'])
+#         if not course:
+#             return jsonify({'message': 'Course not found'}), 404
         
-        # Verify teacher exists (if provided)
-        teacher = None
-        if data.get('teacher_id'):
-            teacher = Teacher.query.get(data['teacher_id'])
-            if not teacher:
-                return jsonify({'message': 'Teacher not found'}), 404
+#         # Verify teacher exists (if provided)
+#         teacher = None
+#         if data.get('teacher_id'):
+#             teacher = Teacher.query.get(data['teacher_id'])
+#             if not teacher:
+#                 return jsonify({'message': 'Teacher not found'}), 404
         
-        # Create new class
-        new_class = Class(
-            course_id=data['course_id'],
-            teacher_id=data.get('teacher_id'),
-            semester=data['semester'],
-            academic_year=data['academic_year'],
-            max_capacity=data['max_capacity'],
-            status=data.get('status', ClassStatus.OPEN.value)
-        )
+#         # Create new class
+#         new_class = Class(
+#             course_id=data['course_id'],
+#             teacher_id=data.get('teacher_id'),
+#             semester=data['semester'],
+#             academic_year=data['academic_year'],
+#             max_capacity=data['max_capacity'],
+#             status=data.get('status', ClassStatus.OPEN.value)
+#         )
         
-        db.session.add(new_class)
-        db.session.commit()
+#         db.session.add(new_class)
+#         db.session.commit()
         
-        class_data = new_class.to_dict()
-        class_data['course_info'] = course.to_dict()
-        if teacher:
-            class_data['teacher_info'] = {
-                'teacher_name': teacher.user.full_name,
-                'department': teacher.department
-            }
+#         class_data = new_class.to_dict()
+#         class_data['course_info'] = course.to_dict()
+#         if teacher:
+#             class_data['teacher_info'] = {
+#                 'teacher_name': teacher.user.full_name,
+#                 'department': teacher.department
+#             }
         
-        return jsonify({
-            'message': 'Class created successfully',
-            'class': class_data
-        }), 201
+#         return jsonify({
+#             'message': 'Class created successfully',
+#             'class': class_data
+#         }), 201
         
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'message': 'Failed to create class', 'error': str(e)}), 500
+#     except Exception as e:
+#         db.session.rollback()
+#         return jsonify({'message': 'Failed to create class', 'error': str(e)}), 500
 
 @manager_bp.route('/assign-teacher', methods=['POST'])
 @manager_required
@@ -790,3 +790,421 @@ def get_all_classes(current_user):
         
     except Exception as e:
         return jsonify({'message': 'Failed to get classes', 'error': str(e)}), 500
+from datetime import datetime
+from flask import Blueprint, request, jsonify
+from models import db, User, Student, Teacher, Course, Class, UserType, ClassStatus
+from decorators import manager_required
+from routes import error_response, success_response
+
+# ====================== MANAGER ROUTES ======================
+
+@manager_bp.route('/create-class', methods=['POST'])
+@manager_required
+def create_class(current_user):
+    """Create a new class with specified fields, without teacher assignment"""
+    try:
+        data = request.get_json()
+        
+        required_fields = ['course_id', 'semester', 'academic_year', 'max_capacity', 'start_date', 'end_date']
+        missing_fields = [field for field in required_fields if not data.get(field)]
+        if missing_fields:
+            return error_response(
+                'MISSING_REQUIRED_FIELDS',
+                'Thiếu các trường bắt buộc.',
+                {'missing_fields': missing_fields, 'required_fields': required_fields}
+            )
+        
+        # Verify course exists
+        course = Course.query.get(data['course_id'])
+        if not course:
+            return error_response('COURSE_NOT_FOUND', 'Khóa học không tồn tại.', 404)
+        
+        # Validate dates
+        try:
+            start_date = datetime.strptime(data['start_date'], '%Y-%m-%d').date()
+            end_date = datetime.strptime(data['end_date'], '%Y-%m-%d').date()
+            if start_date >= end_date:
+                return error_response(
+                    'INVALID_DATES',
+                    'Ngày bắt đầu phải trước ngày kết thúc.',
+                    {'start_date': data['start_date'], 'end_date': data['end_date']}
+                )
+        except ValueError:
+            return error_response('INVALID_DATE_FORMAT', 'Định dạng ngày không hợp lệ (YYYY-MM-DD).')
+
+        # Create new class
+        new_class = Class(
+            course_id=data['course_id'],
+            semester=data['semester'],
+            academic_year=data['academic_year'],
+            max_capacity=data['max_capacity'],
+            status=ClassStatus.OPEN.value,
+            start_date=start_date,
+            end_date=end_date
+        )
+        
+        db.session.add(new_class)
+        db.session.commit()
+        
+        class_data = new_class.to_dict()
+        class_data['course_info'] = course.to_dict()
+        
+        return success_response(
+            'Tạo lớp học thành công.',
+            {'class': class_data},
+            201
+        )
+        
+    except Exception as e:
+        db.session.rollback()
+        return error_response(
+            'CREATE_CLASS_FAILED',
+            'Tạo lớp học thất bại.',
+            {'error_details': str(e)},
+            500
+        )
+
+@manager_bp.route('/update-class/<int:class_id>', methods=['PUT'])
+@manager_required
+def update_class(current_user, class_id):
+    """Update class information with restrictions"""
+    try:
+        data = request.get_json()
+        class_obj = Class.query.get(class_id)
+        
+        if not class_obj:
+            return error_response('CLASS_NOT_FOUND', 'Lớp học không tồn tại.', 404)
+        
+        # Prevent updating course_id
+        if 'course_id' in data:
+            return error_response(
+                'INVALID_UPDATE',
+                'Không được phép cập nhật ID khóa học.',
+                {'field': 'course_id'}
+            )
+        
+        # Validate status update based on timing
+        if 'status' in data:
+            current_date = datetime.utcnow().date()
+            try:
+                start_date = class_obj.start_date
+                end_date = class_obj.end_date
+                
+                if data['status'] == ClassStatus.COMPLETED.value and current_date < end_date:
+                    return error_response(
+                        'INVALID_STATUS_UPDATE',
+                        'Không thể hoàn thành lớp học trước ngày kết thúc.',
+                        {'current_date': current_date.isoformat(), 'end_date': end_date.isoformat()}
+                    )
+                if data['status'] == ClassStatus.OPEN.value and current_date > start_date:
+                    return error_response(
+                        'INVALID_STATUS_UPDATE',
+                        'Không thể mở lại lớp học sau ngày bắt đầu.',
+                        {'current_date': current_date.isoformat(), 'start_date': start_date.isoformat()}
+                    )
+            except AttributeError:
+                return error_response(
+                    'MISSING_DATES',
+                    'Lớp học không có ngày bắt đầu hoặc kết thúc.',
+                    {'class_id': class_id}
+                )
+        
+        # Update allowed fields
+        allowed_fields = ['semester', 'academic_year', 'max_capacity', 'start_date', 'end_date', 'status']
+        for field in allowed_fields:
+            if field in data:
+                if field in ['start_date', 'end_date']:
+                    try:
+                        setattr(class_obj, field, datetime.strptime(data[field], '%Y-%m-%d').date())
+                    except ValueError:
+                        return error_response(
+                            'INVALID_DATE_FORMAT',
+                            f'Định dạng ngày không hợp lệ cho {field} (YYYY-MM-DD).'
+                        )
+                else:
+                    setattr(class_obj, field, data[field])
+        
+        db.session.commit()
+        
+        class_data = class_obj.to_dict()
+        class_data['course_info'] = class_obj.course.to_dict()
+        
+        return success_response(
+            'Cập nhật lớp học thành công.',
+            {'class': class_data}
+        )
+        
+    except Exception as e:
+        db.session.rollback()
+        return error_response(
+            'UPDATE_CLASS_FAILED',
+            'Cập nhật lớp học thất bại.',
+            {'error_details': str(e)},
+            500
+        )
+
+@manager_bp.route('/add-student', methods=['POST'])
+@manager_required
+def add_student(current_user):
+    """Add a new student"""
+    try:
+        data = request.get_json()
+        
+        required_fields = ['username', 'password', 'full_name', 'email', 'phone_number', 'major']
+        missing_fields = [field for field in required_fields if not data.get(field)]
+        if missing_fields:
+            return error_response(
+                'MISSING_REQUIRED_FIELDS',
+                'Thiếu các trường bắt buộc.',
+                {'missing_fields': missing_fields, 'required_fields': required_fields}
+            )
+        
+        # Check if username exists
+        if User.query.filter_by(username=data['username']).first():
+            return error_response(
+                'USERNAME_EXISTS',
+                'Tên đăng nhập đã tồn tại.',
+                {'username': data['username']},
+                409
+            )
+        
+        # Check if email exists
+        if User.query.filter_by(email=data['email']).first():
+            return error_response(
+                'EMAIL_EXISTS',
+                'Email đã được sử dụng.',
+                {'email': data['email']},
+                409
+            )
+        
+        # Create user
+        user = User(
+            username=data['username'],
+            full_name=data['full_name'],
+            email=data['email'],
+            phone_number=data['phone_number'],
+            user_type=UserType.STUDENT.value
+        )
+        user.set_password(data['password'])
+        db.session.add(user)
+        db.session.flush()
+        
+        # Create student
+        student = Student(
+            user_id=user.user_id,
+            major=data['major']
+        )
+        db.session.add(student)
+        db.session.commit()
+        
+        user_data = user.to_dict()
+        user_data['student_info'] = student.to_dict()
+        
+        return success_response(
+            'Thêm sinh viên thành công.',
+            {'user': user_data},
+            201
+        )
+        
+    except Exception as e:
+        db.session.rollback()
+        return error_response(
+            'ADD_STUDENT_FAILED',
+            'Thêm sinh viên thất bại.',
+            {'error_details': str(e)},
+            500
+        )
+
+@manager_bp.route('/update-student/<int:student_id>', methods=['PUT'])
+@manager_required
+def update_student(current_user, student_id):
+    """Update student information"""
+    try:
+        data = request.get_json()
+        student = Student.query.get(student_id)
+        
+        if not student:
+            return error_response('STUDENT_NOT_FOUND', 'Sinh viên không tồn tại.', 404)
+        
+        user = student.user
+        
+        # Validate updates
+        if 'username' in data:
+            return error_response(
+                'INVALID_UPDATE',
+                'Không được phép cập nhật tên đăng nhập.',
+                {'field': 'username'}
+            )
+        
+        if 'email' in data and data['email'] != user.email:
+            if User.query.filter_by(email=data['email']).first():
+                return error_response(
+                    'EMAIL_EXISTS',
+                    'Email đã được sử dụng.',
+                    {'email': data['email']},
+                    409
+                )
+        
+        # Update allowed fields
+        allowed_user_fields = ['full_name', 'email', 'phone_number']
+        for field in allowed_user_fields:
+            if field in data:
+                setattr(user, field, data[field])
+        
+        if 'password' in data:
+            user.set_password(data['password'])
+        
+        if 'major' in data:
+            student.major = data['major']
+        
+        db.session.commit()
+        
+        user_data = user.to_dict()
+        user_data['student_info'] = student.to_dict()
+        
+        return success_response(
+            'Cập nhật thông tin sinh viên thành công.',
+            {'user': user_data}
+        )
+        
+    except Exception as e:
+        db.session.rollback()
+        return error_response(
+            'UPDATE_STUDENT_FAILED',
+            'Cập nhật thông tin sinh viên thất bại.',
+            {'error_details': str(e)},
+            500
+        )
+
+@manager_bp.route('/add-teacher', methods=['POST'])
+@manager_required
+def add_teacher(current_user):
+    """Add a new teacher"""
+    try:
+        data = request.get_json()
+        
+        required_fields = ['username', 'password', 'full_name', 'email', 'phone_number', 'department']
+        missing_fields = [field for field in required_fields if not data.get(field)]
+        if missing_fields:
+            return error_response(
+                'MISSING_REQUIRED_FIELDS',
+                'Thiếu các trường bắt buộc.',
+                {'missing_fields': missing_fields, 'required_fields': required_fields}
+            )
+        
+        # Check if username exists
+        if User.query.filter_by(username=data['username']).first():
+            return error_response(
+                'USERNAME_EXISTS',
+                'Tên đăng nhập đã tồn tại.',
+                {'username': data['username']},
+                409
+            )
+        
+        # Check if email exists
+        if User.query.filter_by(email=data['email']).first():
+            return error_response(
+                'EMAIL_EXISTS',
+                'Email đã được sử dụng.',
+                {'email': data['email']},
+                409
+            )
+        
+        # Create user
+        user = User(
+            username=data['username'],
+            full_name=data['full_name'],
+            email=data['email'],
+            phone_number=data['phone_number'],
+            user_type=UserType.TEACHER.value
+        )
+        user.set_password(data['password'])
+        db.session.add(user)
+        db.session.flush()
+        
+        # Create teacher
+        teacher = Teacher(
+            user_id=user.user_id,
+            department=data['department']
+        )
+        db.session.add(teacher)
+        db.session.commit()
+        
+        user_data = user.to_dict()
+        user_data['teacher_info'] = teacher.to_dict()
+        
+        return success_response(
+            'Thêm giáo viên thành công.',
+            {'user': user_data},
+            201
+        )
+        
+    except Exception as e:
+        db.session.rollback()
+        return error_response(
+            'ADD_TEACHER_FAILED',
+            'Thêm giáo viên thất bại.',
+            {'error_details': str(e)},
+            500
+        )
+
+@manager_bp.route('/update-teacher/<int:teacher_id>', methods=['PUT'])
+@manager_required
+def update_teacher(current_user, teacher_id):
+    """Update teacher information"""
+    try:
+        data = request.get_json()
+        teacher = Teacher.query.get(teacher_id)
+        
+        if not teacher:
+            return error_response('TEACHER_NOT_FOUND', 'Giáo viên không tồn tại.', 404)
+        
+        user = teacher.user
+        
+        # Validate updates
+        if 'username' in data:
+            return error_response(
+                'INVALID_UPDATE',
+                'Không được phép cập nhật tên đăng nhập.',
+                {'field': 'username'}
+            )
+        
+        if 'email' in data and data['email'] != user.email:
+            if User.query.filter_by(email=data['email']).first():
+                return error_response(
+                    'EMAIL_EXISTS',
+                    'Email đã được sử dụng.',
+                    {'email': data['email']},
+                    409
+                )
+        
+        # Update allowed fields
+        allowed_user_fields = ['full_name', 'email', 'phone_number']
+        for field in allowed_user_fields:
+            if field in data:
+                setattr(user, field, data[field])
+        
+        if 'password' in data:
+            user.set_password(data['password'])
+        
+        if 'department' in data:
+            teacher.department = data['department']
+        
+        db.session.commit()
+        
+        user_data = user.to_dict()
+        user_data['teacher_info'] = teacher.to_dict()
+        
+        return success_response(
+            'Cập nhật thông tin giáo viên thành công.',
+            {'user': user_data}
+        )
+        
+    except Exception as e:
+        db.session.rollback()
+        return error_response(
+            'UPDATE_TEACHER_FAILED',
+            'Cập nhật thông tin giáo viên thất bại.',
+            {'error_details': str(e)},
+            500
+        )

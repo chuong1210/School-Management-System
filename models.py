@@ -127,6 +127,7 @@ class Course(db.Model):
             'description': self.description
         }
 
+# Update Class model in models.py
 class Class(db.Model):
     __tablename__ = 'classes'
     
@@ -138,6 +139,8 @@ class Class(db.Model):
     max_capacity = db.Column('MaxCapacity', db.Integer)
     current_enrollment = db.Column('CurrentEnrollment', db.Integer, default=0)
     status = db.Column('Status', db.String(20), nullable=False)
+    start_date = db.Column('StartDate', db.Date, nullable=False)
+    end_date = db.Column('EndDate', db.Date, nullable=False)
     
     # Relationships
     schedules = db.relationship('Schedule', backref='class_ref', cascade='all, delete-orphan')
@@ -152,7 +155,9 @@ class Class(db.Model):
             'academic_year': self.academic_year,
             'max_capacity': self.max_capacity,
             'current_enrollment': self.current_enrollment,
-            'status': self.status
+            'status': self.status,
+            'start_date': self.start_date.isoformat() if self.start_date else None,
+            'end_date': self.end_date.isoformat() if self.end_date else None
         }
 
 class Schedule(db.Model):
