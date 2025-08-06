@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify, current_app
+from flask import Blueprint, request, jsonify, current_app,make_response
 from flask_jwt_extended import (
     create_access_token, create_refresh_token, jwt_required, 
     get_jwt_identity, get_jwt
@@ -30,7 +30,10 @@ def error_response(error_code, message, details=None, status_code=400):
     }
     if details:
         response_data['details'] = details
-    return jsonify(response_data), status_code
+
+    response = make_response(jsonify(response_data), status_code)
+    response.headers["Content-Type"] = "application/json; charset=utf-8"
+    return response
 
 # Helper function for success responses
 def success_response(message, data=None, status_code=200):
@@ -43,7 +46,10 @@ def success_response(message, data=None, status_code=200):
     }
     if data:
         response_data['data'] = data
-    return jsonify(response_data), status_code
+
+    response = make_response(jsonify(response_data), status_code)
+    response.headers["Content-Type"] = "application/json; charset=utf-8"
+    return response
 
 # ====================== AUTH ROUTES ======================
 
