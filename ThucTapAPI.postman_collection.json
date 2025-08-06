@@ -382,7 +382,7 @@
 							}
 						},
 						"url": {
-							"raw": "{{baseUrl}}/api/manager/all-users?page=1&per_page=10",
+							"raw": "{{baseUrl}}/api/manager/all-users?user_type=Học sinh",
 							"host": [
 								"{{baseUrl}}"
 							],
@@ -393,12 +393,8 @@
 							],
 							"query": [
 								{
-									"key": "page",
-									"value": "1"
-								},
-								{
-									"key": "per_page",
-									"value": "10"
+									"key": "user_type",
+									"value": "Học sinh"
 								}
 							]
 						}
@@ -547,7 +543,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\r\n  \"course_id\": 1,\r\n  \"teacher_id\": 1,\r\n  \"semester\": \"Học kỳ 2\",\r\n  \"academic_year\": \"2024-2025\",\r\n  \"max_capacity\": 50,\r\n  \"status\": \"Mở\"\r\n}",
+							"raw": "{\r\n    \"course_id\": 1,\r\n    \"semester\": \"Học kỳ 1\",\r\n    \"academic_year\": \"2025-2026\",\r\n    \"max_capacity\": 40,\r\n    \"start_date\": \"2025-09-01\",\r\n    \"end_date\": \"2025-12-31\"\r\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -563,6 +559,259 @@
 								"api",
 								"manager",
 								"create-class"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Add a New Student",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"username\": \"student003\",\r\n    \"password\": \"password123\",\r\n    \"full_name\": \"Phạm Văn Cường\",\r\n    \"email\": \"student003@school.edu.vn\",\r\n    \"phone_number\": \"0987654325\",\r\n    \"major\": \"Kỹ thuật phần mềm\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/manager/add-student",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"manager",
+								"add-student"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Add a New Teacher",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"username\": \"teacher003\",\r\n    \"password\": \"password123\",\r\n    \"full_name\": \"Nguyễn Thị Hồng\",\r\n    \"email\": \"teacher003@school.edu.vn\",\r\n    \"phone_number\": \"0987654326\",\r\n    \"department\": \"Khoa Toán học\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/manager/add-teacher",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"manager",
+								"add-teacher"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Class",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"semester\": \"Học kỳ 1\",\r\n    \"academic_year\": \"2025-2026\",\r\n    \"max_capacity\": 50,\r\n    \"start_date\": \"2025-09-01\",\r\n    \"end_date\": \"2025-12-31\",\r\n    \"status\": \"Mở\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/manager/update-class/6",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"manager",
+								"update-class",
+								"6"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Student",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"full_name\": \"Nguyễn Văn An Updated\",\r\n    \"email\": \"newstudent001@school.edu.vn\",\r\n    \"phone_number\": \"0999999999\",\r\n    \"password\": \"newpassword123\",\r\n    \"major\": \"Khoa học máy tính\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/manager/update-student/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"manager",
+								"update-student",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Teacher",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"full_name\": \"TS. Lê Văn Cường Updated\",\r\n    \"email\": \"newteacher001@school.edu.vn\",\r\n    \"phone_number\": \"0999999998\",\r\n    \"password\": \"newpassword123\",\r\n    \"department\": \"Khoa Công nghệ thông tin Updated\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/manager/update-teacher/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"manager",
+								"update-teacher",
+								"1"
 							]
 						}
 					},
@@ -790,7 +1039,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\r\n  \"username\": \"teacher002\",\r\n  \"password\": \"123456\"\r\n}",
+							"raw": "{\r\n  \"username\": \"admin\",\r\n  \"password\": \"123456\"\r\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -826,6 +1075,16 @@
 						}
 					],
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
 						"method": "POST",
 						"header": [],
 						"body": {
@@ -838,12 +1097,11 @@
 							}
 						},
 						"url": {
-							"raw": "{{baseUrl}}//api/auth/refresh",
+							"raw": "{{baseUrl}}/api/auth/refresh",
 							"host": [
 								"{{baseUrl}}"
 							],
 							"path": [
-								"",
 								"api",
 								"auth",
 								"refresh"
@@ -950,6 +1208,26 @@
 					"response": []
 				}
 			]
+		},
+		{
+			"name": "New Request",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "https://ai-api.bitech.vn/health",
+					"protocol": "https",
+					"host": [
+						"ai-api",
+						"bitech",
+						"vn"
+					],
+					"path": [
+						"health"
+					]
+				}
+			},
+			"response": []
 		}
 	]
 }

@@ -84,11 +84,11 @@ CREATE TABLE IF NOT EXISTS enrollments (
 -- Insert sample data
 -- Sample Users
 INSERT INTO users (Username, PasswordHash, FullName, Email, PhoneNumber, UserType, DateCreated) VALUES
-('admin', '$2b$12$LQv3c1yqBwlVHpPjrCeyAueVuV/1zXtEIYqZe5rBhOwqMLwxo6QN2', 'Quản trị viên hệ thống', 'admin@school.edu.vn', '0123456789', 'Cán bộ quản lý', NOW()),
-('student001', '$2b$12$LQv3c1yqBwlVHpPjrCeyAueVuV/1zXtEIYqZe5rBhOwqMLwxo6QN2', 'Nguyễn Văn An', 'student001@school.edu.vn', '0987654321', 'Học sinh', NOW()),
-('student002', '$2b$12$LQv3c1yqBwlVHpPjrCeyAueVuV/1zXtEIYqZe5rBhOwqMLwxo6QN2', 'Trần Thị Bình', 'student002@school.edu.vn', '0987654322', 'Học sinh', NOW()),
-('teacher001', '$2b$12$LQv3c1yqBwlVHpPjrCeyAueVuV/1zXtEIYqZe5rBhOwqMLwxo6QN2', 'TS. Lê Văn Cường', 'teacher001@school.edu.vn', '0987654323', 'Giáo viên', NOW()),
-('teacher002', '$2b$12$LQv3c1yqBwlVHpPjrCeyAueVuV/1zXtEIYqZe5rBhOwqMLwxo6QN2', 'PGS. Phạm Thị Dung', 'teacher002@school.edu.vn', '0987654324', 'Giáo viên', NOW());
+('admin', '$2a$10$OhDj1ffutzBH934vRc34y.LqXckQxGN7n1po5qR1wbWVycBNf/Dxq', 'Quản trị viên hệ thống', 'admin@school.edu.vn', '0123456789', 'Cán bộ quản lý', NOW()),
+('student001', '$2a$10$OhDj1ffutzBH934vRc34y.LqXckQxGN7n1po5qR1wbWVycBNf/Dxq', 'Nguyễn Văn An', 'student001@school.edu.vn', '0987654321', 'Học sinh', NOW()),
+('student002', '$2a$10$OhDj1ffutzBH934vRc34y.LqXckQxGN7n1po5qR1wbWVycBNf/Dxq', 'Trần Thị Bình', 'student002@school.edu.vn', '0987654322', 'Học sinh', NOW()),
+('teacher001', '$2a$10$OhDj1ffutzBH934vRc34y.LqXckQxGN7n1po5qR1wbWVycBNf/Dxq', 'TS. Lê Văn Cường', 'teacher001@school.edu.vn', '0987654323', 'Giáo viên', NOW()),
+('teacher002', '$2a$10$OhDj1ffutzBH934vRc34y.LqXckQxGN7n1po5qR1wbWVycBNf/Dxq', 'PGS. Phạm Thị Dung', 'teacher002@school.edu.vn', '0987654324', 'Giáo viên', NOW());
 
 -- Sample Students
 INSERT INTO students (UserID, StudentCode, DateOfBirth, Major, EnrollmentDate) VALUES

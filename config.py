@@ -10,7 +10,7 @@ class Config:
     
     # Database config
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or \
-        'mysql+pymysql://myuser:101204@localhost:3307/school_management'
+        'mysql+pymysql://myuser:101204@localhost:3307/school_management?charset=utf8mb4'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
     # JWT config
