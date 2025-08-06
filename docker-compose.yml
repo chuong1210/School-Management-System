@@ -1,6 +1,3 @@
-
-version: '3.8'
-
 services:
   web:
     build: .
@@ -12,7 +9,8 @@ services:
     volumes:
       - .:/app
     depends_on:
-      - db
+      db:
+        condition: service_healthy    
     networks:
       - app-network
 
@@ -20,9 +18,9 @@ services:
     image: mysql:8.0
     environment:
       MYSQL_ROOT_PASSWORD: 101204
-      MYSQL_DATABASE: school_management             # Tùy chọn: tạo database sẵn
-      MYSQL_USER: myuser               # Tùy chọn: tạo user
-      MYSQL_PASSWORD: 101204           # Tùy chọn: mật khẩu cho user
+      MYSQL_DATABASE: school_management
+      MYSQL_USER: myuser
+      MYSQL_PASSWORD: 101204
     ports:
       - "3307:3306"
     volumes:
@@ -30,6 +28,11 @@ services:
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - app-network
+    healthcheck:                       # 👈 thêm healthcheck cho MySQL
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p101204"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   redis:
     image: redis:7-alpine

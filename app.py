@@ -8,6 +8,9 @@ from models import db
 from routes import auth_bp, student_bp, teacher_bp, manager_bp
 from decorators import init_redis
 from flask_migrate import Migrate
+from sqlalchemy.exc import OperationalError
+import time
+
 def create_app(config_name=None):
     """Application factory"""
     app = Flask(__name__)
@@ -18,6 +21,15 @@ def create_app(config_name=None):
     
     # Initialize extensions
     db.init_app(app)
+    with app.app_context():
+        retries = 5
+        for i in range(retries):
+            try:
+                db.create_all()
+                break
+            except OperationalError:
+                print(f"Database unavailable, retrying in 3s... ({i+1}/{retries})")
+                time.sleep(3)
     migrate = Migrate(app, db)  # Initialize Flask-Migrate
     jwt = JWTManager(app)
     CORS(app, origins=app.config['CORS_ORIGINS'])
