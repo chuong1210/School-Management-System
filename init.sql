@@ -1,8 +1,9 @@
--- Initial database setup for School Management System
 
--- Create database if not exists
+SET NAMES UTF8MB4;
+SET CHARACTER SET utf8mb4;
 CREATE DATABASE IF NOT EXISTS school_management CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE school_management;
+
 
 -- Insert sample data
 
@@ -26,6 +27,7 @@ CREATE TABLE users (
     DateCreated DATETIME DEFAULT CURRENT_TIMESTAMP,
     LastLogin DATETIME
 );
+ALTER TABLE users CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 CREATE TABLE students (
     StudentID INT PRIMARY KEY AUTO_INCREMENT,
