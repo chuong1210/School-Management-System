@@ -14,3 +14,8 @@ email-validator==2.1.0
 google-adk
 Flask-Migrate==4.0.4
 Flask-Login==0.6.2
+mcp
+uvicorn 
+fastapi 
+httpx 
+google-adk
