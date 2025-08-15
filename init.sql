@@ -1,87 +1,86 @@
-
 SET NAMES UTF8MB4;
 SET CHARACTER SET utf8mb4;
 CREATE DATABASE IF NOT EXISTS school_management CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE school_management;
 
-
 -- Insert sample data
 
 -- Create tables
 CREATE TABLE courses (
-    CourseID INT PRIMARY KEY AUTO_INCREMENT,
-    CourseCode VARCHAR(50) NOT NULL,
-    CourseName VARCHAR(255) NOT NULL,
-    Credits INT NOT NULL,
-    Description TEXT
+ CourseID INT PRIMARY KEY AUTO_INCREMENT,
+ CourseCode VARCHAR(50) NOT NULL,
+ CourseName VARCHAR(255) NOT NULL,
+ Credits INT NOT NULL,
+ Description TEXT
 );
 
 CREATE TABLE users (
-    UserID INT PRIMARY KEY AUTO_INCREMENT,
-    Username VARCHAR(50) UNIQUE NOT NULL,
-    PasswordHash VARCHAR(255) NOT NULL,
-    FullName VARCHAR(255) NOT NULL,
-    Email VARCHAR(255) UNIQUE NOT NULL,
-    PhoneNumber VARCHAR(20),
-    UserType ENUM('Cán bộ quản lý', 'Giáo viên', 'Học sinh') NOT NULL,
-    DateCreated DATETIME DEFAULT CURRENT_TIMESTAMP,
-    LastLogin DATETIME
+ UserID INT PRIMARY KEY AUTO_INCREMENT,
+ Username VARCHAR(50) UNIQUE NOT NULL,
+ PasswordHash VARCHAR(255) NOT NULL,
+ FullName VARCHAR(255) NOT NULL,
+ Email VARCHAR(255) UNIQUE NOT NULL,
+ PhoneNumber VARCHAR(20),
+ UserType ENUM('Cán bộ quản lý', 'Giáo viên', 'Học sinh') NOT NULL,
+ DateCreated DATETIME DEFAULT CURRENT_TIMESTAMP,
+ LastLogin DATETIME
 );
 ALTER TABLE users CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 CREATE TABLE students (
-    StudentID INT PRIMARY KEY AUTO_INCREMENT,
-    UserID INT UNIQUE NOT NULL,
-    StudentCode VARCHAR(50),
-    DateOfBirth DATE,
-    Major VARCHAR(255),
-    EnrollmentDate DATE,
-    FOREIGN KEY (UserID) REFERENCES users(UserID)
+ StudentID INT PRIMARY KEY AUTO_INCREMENT,
+ UserID INT UNIQUE NOT NULL,
+ StudentCode VARCHAR(50),
+ DateOfBirth DATE,
+ Major VARCHAR(255),
+ EnrollmentDate DATE,
+ FOREIGN KEY (UserID) REFERENCES users(UserID)
 );
 
 CREATE TABLE teachers (
-    TeacherID INT PRIMARY KEY AUTO_INCREMENT,
-    UserID INT UNIQUE NOT NULL,
-    TeacherCode VARCHAR(50),
-    Department VARCHAR(255),
-    HireDate DATE,
-    FOREIGN KEY (UserID) REFERENCES users(UserID)
+ TeacherID INT PRIMARY KEY AUTO_INCREMENT,
+ UserID INT UNIQUE NOT NULL,
+ TeacherCode VARCHAR(50),
+ Department VARCHAR(255),
+ HireDate DATE,
+ FOREIGN KEY (UserID) REFERENCES users(UserID)
 );
 
 CREATE TABLE classes (
-    ClassID INT PRIMARY KEY AUTO_INCREMENT,
-    CourseID INT NOT NULL,
-    TeacherID INT,
-    Semester VARCHAR(50) NOT NULL,
-    AcademicYear VARCHAR(10) NOT NULL,
-    MaxCapacity INT,
-    CurrentEnrollment INT DEFAULT 0,
-    Status VARCHAR(20) NOT NULL,
-    StartDate DATE NOT NULL,
-    EndDate DATE NOT NULL,
-    FOREIGN KEY (CourseID) REFERENCES courses(CourseID),
-    FOREIGN KEY (TeacherID) REFERENCES teachers(TeacherID)
+ ClassID INT PRIMARY KEY AUTO_INCREMENT,
+ CourseID INT NOT NULL,
+ TeacherID INT,
+ Semester VARCHAR(50) NOT NULL,
+ AcademicYear VARCHAR(10) NOT NULL,
+ MaxCapacity INT,
+ CurrentEnrollment INT DEFAULT 0,
+ Status VARCHAR(20) NOT NULL,
+ StartDate DATE NOT NULL,
+ EndDate DATE NOT NULL,
+ FOREIGN KEY (CourseID) REFERENCES courses(CourseID),
+ FOREIGN KEY (TeacherID) REFERENCES teachers(TeacherID)
 );
 CREATE TABLE IF NOT EXISTS schedules (
-    ScheduleID INT AUTO_INCREMENT PRIMARY KEY,
-    ClassID INT NOT NULL,
-    DayOfWeek VARCHAR(50) NOT NULL,
-    StartTime TIME NOT NULL,
-    EndTime TIME NOT NULL,
-    RoomLocation VARCHAR(100),
-    FOREIGN KEY (ClassID) REFERENCES classes(ClassID)
+ ScheduleID INT AUTO_INCREMENT PRIMARY KEY,
+ ClassID INT NOT NULL,
+ DayOfWeek VARCHAR(50) NOT NULL,
+ StartTime TIME NOT NULL,
+ EndTime TIME NOT NULL,
+ RoomLocation VARCHAR(100),
+ FOREIGN KEY (ClassID) REFERENCES classes(ClassID)
 );
 
 CREATE TABLE IF NOT EXISTS enrollments (
-    EnrollmentID  INT AUTO_INCREMENT PRIMARY KEY,
-    StudentID INT,
-    ClassID INT,
-    EnrollmentDate DATETIME,
-    Status VARCHAR(20),
-    Grade VARCHAR(6),
-    
-    FOREIGN KEY (StudentID) REFERENCES students(StudentID),
-    FOREIGN KEY (ClassID) REFERENCES classes(ClassID)
+ EnrollmentID  INT AUTO_INCREMENT PRIMARY KEY,
+ StudentID INT,
+ ClassID INT,
+ EnrollmentDate DATETIME,
+ CancellationDate DATETIME DEFAULT NULL,
+ Status VARCHAR(20),
+ Grade VARCHAR(6),
+ 
+ FOREIGN KEY (StudentID) REFERENCES students(StudentID),
+ FOREIGN KEY (ClassID) REFERENCES classes(ClassID)
 );
 -- Insert sample data
 -- Sample Users
@@ -132,8 +131,9 @@ INSERT INTO schedules (ClassID, DayOfWeek, StartTime, EndTime, RoomLocation) VAL
 (5, 'Thứ Ba', '08:00:00', '10:30:00', 'Phòng E501');
 
 -- Sample Enrollments
-INSERT INTO enrollments (StudentID, ClassID, EnrollmentDate, Status) VALUES
-(1, 1, NOW(), 'Đã đăng ký'),
-(1, 2, NOW(), 'Đã đăng ký'),
-(2, 1, NOW(), 'Đã đăng ký'),
-(2, 4, NOW(), 'Đã đăng ký');
+INSERT INTO enrollments (StudentID, ClassID, EnrollmentDate, Status, CancellationDate, Grade)
+VALUES
+(1, 1, NOW(), 'Đã đăng ký', NULL, NULL),
+(1, 2, NOW(), 'Đã đăng ký', NULL, NULL),
+(2, 1, NOW(), 'Đã đăng ký', NULL, NULL),
+(2, 4, NOW(), 'Đã đăng ký', NULL, NULL);
