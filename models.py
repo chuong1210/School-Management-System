@@ -189,7 +189,8 @@ class Enrollment(db.Model):
     enrollment_date = db.Column('EnrollmentDate', db.DateTime, default=datetime.utcnow)
     grade = db.Column('Grade', db.String(5))
     status = db.Column('Status', db.String(20), nullable=False)
-    
+    cancellation_date = db.Column('CancellationDate', db.DateTime, default=datetime.utcnow)
+
     __table_args__ = (db.UniqueConstraint('StudentID', 'ClassID', name='unique_student_class'),)
     
     def to_dict(self):
@@ -198,6 +199,7 @@ class Enrollment(db.Model):
             'student_id': self.student_id,
             'class_id': self.class_id,
             'enrollment_date': self.enrollment_date.isoformat() if self.enrollment_date else None,
+            'cancellation_date': self.cancellation_date.isoformat() if self.cancellation_date else None,
             'grade': self.grade,
             'status': self.status
         }

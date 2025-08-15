@@ -399,7 +399,118 @@ def enroll_course(current_user):
     except Exception as e:
         db.session.rollback()
         return jsonify({'message': 'Enrollment failed', 'error': str(e)}), 500
-
+@student_bp.route('/cancel-enrollment', methods=['POST'])
+@student_required
+def cancel_enrollment(current_user):
+    """Cancel enrollment in a course"""
+    try:
+        data = request.get_json()
+        
+        if not data.get('class_id'):
+            return error_response('MISSING_CLASS_ID', 'Yêu cầu cung cấp class_id.', 400)
+        
+        if not current_user.student:
+            return error_response('STUDENT_NOT_FOUND', 'Hồ sơ sinh viên không tồn tại.', 404)
+        
+        # Verify class exists
+        class_obj = Class.query.get(data['class_id'])
+        if not class_obj:
+            return error_response('CLASS_NOT_FOUND', 'Lớp học không tồn tại.', 404)
+        
+        # Check if class is open
+        if class_obj.status != ClassStatus.OPEN.value:
+            return error_response(
+                'CLASS_NOT_OPEN',
+                'Không thể hủy đăng ký vì lớp học không ở trạng thái mở.',
+                {'class_status': class_obj.status}
+            )
+        
+        # Check if student is enrolled
+        enrollment = Enrollment.query.filter_by(
+            student_id=current_user.student.student_id,
+            class_id=data['class_id'],
+            status=EnrollmentStatus.REGISTERED.value
+        ).first()
+        
+        if not enrollment:
+            return error_response(
+                'NOT_ENROLLED',
+                'Bạn chưa đăng ký lớp học này hoặc đăng ký đã bị hủy.',
+                {'class_id': data['class_id']},
+                400
+            )
+        
+        # Check cancellation period (within 14 days from class start date)
+        current_date = datetime.utcnow().date()
+        cancellation_deadline = class_obj.start_date + timedelta(days=14)
+        if current_date > cancellation_deadline:
+            return error_response(
+                'OUTSIDE_CANCELLATION_PERIOD',
+                'Không thể hủy đăng ký vì đã quá thời hạn hủy (14 ngày sau ngày bắt đầu).',
+                {
+                    'current_date': current_date.isoformat(),
+                    'cancellation_deadline': cancellation_deadline.isoformat(),
+                    'start_date': class_obj.start_date.isoformat()
+                }
+            )
+        
+        # Ensure no grade has been assigned
+        if enrollment.grade is not None:
+            return error_response(
+                'GRADE_ASSIGNED',
+                'Không thể hủy đăng ký vì điểm đã được ghi nhận.',
+                {'class_id': data['class_id']}
+            )
+        
+        # Optional: Check minimum credit requirement (example: 12 credits for full-time status)
+        # Calculate current enrolled credits
+        enrolled_classes = Enrollment.query.filter_by(
+            student_id=current_user.student.student_id,
+            status=EnrollmentStatus.REGISTERED.value
+        ).all()
+        total_credits = sum(
+            Class.query.get(enrollment.class_id).course.credits
+            for enrollment in enrolled_classes
+            if enrollment.class_id != data['class_id']
+        )
+        # Assume minimum 12 credits required for full-time status
+        if total_credits < 12:
+            return error_response(
+                'MINIMUM_CREDIT_VIOLATION',
+                'Hủy đăng ký sẽ khiến tổng số tín chỉ dưới mức tối thiểu (12 tín chỉ).',
+                {'current_credits': total_credits, 'minimum_required': 12}
+            )
+        
+        # Update enrollment status and record cancellation time
+        enrollment.status = EnrollmentStatus.CANCELLED.value
+        enrollment.cancellation_date = datetime.utcnow()
+        
+        # Decrement class enrollment count
+        class_obj.current_enrollment = max(0, class_obj.current_enrollment - 1)
+        
+        db.session.commit()
+        
+        return success_response(
+            'Hủy đăng ký lớp học thành công.',
+            {
+                'class_info': {
+                    'class_id': class_obj.class_id,
+                    'course_name': class_obj.course.course_name,
+                    'course_code': class_obj.course.course_code,
+                    'semester': class_obj.semester,
+                    'academic_year': class_obj.academic_year
+                }
+            }
+        )
+        
+    except Exception as e:
+        db.session.rollback()
+        return error_response(
+            'CANCEL_ENROLLMENT_FAILED',
+            'Hủy đăng ký lớp học thất bại.',
+            {'error_details': str(e)},
+            500
+        )
 @student_bp.route('/available-classes', methods=['GET'])
 @student_required
 def get_available_classes(current_user):
