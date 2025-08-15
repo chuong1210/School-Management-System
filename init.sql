@@ -71,7 +71,7 @@ CREATE TABLE IF NOT EXISTS schedules (
 );
 
 CREATE TABLE IF NOT EXISTS enrollments (
- EnrollmentID  INT AUTO_INCREMENT PRIMARY KEY,
+ EnrollmentID INT AUTO_INCREMENT PRIMARY KEY,
  StudentID INT,
  ClassID INT,
  EnrollmentDate DATETIME,
