@@ -9,8 +9,8 @@ class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-secret-key'
     
     # Database config
-    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or \
-        'mysql+pymysql://myuser:101204@localhost:3307/school_management?charset=utf8mb4'
+    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_UL') or \
+        'mysql+pymysql://myuser:101204@localhost:3306/school_management?charset=utf8mb4'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
     # JWT config
