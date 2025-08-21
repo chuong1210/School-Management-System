@@ -79,7 +79,9 @@ def role_required(*allowed_roles):
                         'current_user': {
                             'username': current_user.username,
                             'user_type': current_user.user_type,
-                            'user_id': current_user.user_id
+                            'user_id': current_user.user_id,
+                            'department': current_user.teacher.department if current_user.user_type == UserType.TEACHER.value else None,
+                            'major': current_user.student.major if current_user.user_type == UserType.STUDENT.value else None
                         },
                         'required_roles': list(allowed_roles),
                         'endpoint': f.__name__,

@@ -171,18 +171,25 @@ def login():
         
         # Update last login
         user.update_last_login()
-        
+        claims = {
+        'username': user.username,
+        'user_type': user.user_type,
+        'full_name': user.full_name,
+        'department': getattr(user.teacher, 'department', None),
+        'major': getattr(user.student, 'major', None)
+    }
+        access_token = create_access_token(identity=str(user.user_id), additional_claims=claims)
         # Create tokens
-        access_token = create_access_token(
-            identity=str(user.user_id),
-            additional_claims={
-                'username': user.username,
-                'user_type': user.user_type,
-                'full_name': user.full_name,
-                'department': user.teacher.department if user.user_type == UserType.TEACHER.value else None,
-                'major': user.student.major if user.user_type == UserType.STUDENT.value else None
-            }
-        )
+        # access_token = create_access_token(
+        #     identity=str(user.user_id),
+        #     additional_claims={
+        #         'username': user.username,
+        #         'user_type': user.user_type,
+        #         'full_name': user.full_name,
+        #         'department': user.teacher.department if user.user_type == UserType.TEACHER.value else None,
+        #         'major': user.student.major if user.user_type == UserType.STUDENT.value else None
+        #     }
+        # )
         refresh_token = create_refresh_token(identity=str(user.user_id))
         
         # Get user-specific data
@@ -218,7 +225,9 @@ def refresh():
             additional_claims={
                 'username': user.username,
                 'user_type': user.user_type,
-                'full_name': user.full_name
+                'full_name': user.full_name,
+                'department': getattr(user.teacher, 'department', None),
+                'major': getattr(user.student, 'major', None)
             }
         )
         
