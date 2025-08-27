@@ -2,6 +2,7 @@ from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 import bcrypt
 from enum import Enum
+from sqlalchemy import CheckConstraint
 
 db = SQLAlchemy()
 
@@ -18,6 +19,8 @@ class ClassStatus(Enum):
 class EnrollmentStatus(Enum):
     REGISTERED = "Đã đăng ký"
     CANCELLED = "Đã hủy"
+    COMPLETE = "Đã hoàn thành"
+
 
 class Department(db.Model):
     __tablename__ = 'department'
@@ -212,9 +215,12 @@ class Enrollment(db.Model):
     grade = db.Column('Grade', db.String(5))
     status = db.Column('Status', db.String(20), nullable=False)
     cancellation_date = db.Column('CancellationDate', db.DateTime, default=datetime.utcnow)
+    score = db.Column('Score', db.Float, nullable=True)
 
-    __table_args__ = (db.UniqueConstraint('StudentID', 'ClassID', name='unique_student_class'),)
-    
+    __table_args__ = (
+            db.UniqueConstraint('StudentID', 'ClassID', name='unique_student_class'),
+            CheckConstraint('Score >= 0 AND Score <= 10', name='check_score_range')
+        )    
     def to_dict(self):
         return {
             'enrollment_id': self.enrollment_id,
@@ -223,5 +229,7 @@ class Enrollment(db.Model):
             'enrollment_date': self.enrollment_date.isoformat() if self.enrollment_date else None,
             'cancellation_date': self.cancellation_date.isoformat() if self.cancellation_date else None,
             'grade': self.grade,
-            'status': self.status
+            'status': self.status,
+            'score': self.score
+
         }
