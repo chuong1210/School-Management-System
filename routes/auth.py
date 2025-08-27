@@ -219,7 +219,11 @@ def refresh():
             department_name = department.department_name if department else user.teacher.department
         elif user.teacher:
             department_name = user.teacher.department
-        
+        if user.student and user.student.department_id:
+            department = Department.query.get(user.student.department_id)
+            department_name = department.department_name if department else user.student.department
+        elif user.student:
+            department_name = user.student.department
         new_access_token = create_access_token(
             identity=current_user_id,
             additional_claims={
