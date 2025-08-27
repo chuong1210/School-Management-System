@@ -9,7 +9,7 @@ class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-secret-key'
     
     # Database config
-    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or \
+    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_RL') or \
         'mysql+pymysql://myuser:101204@db:3306/school_management?charset=utf8mb4'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
