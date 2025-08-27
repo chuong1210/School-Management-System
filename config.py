@@ -9,8 +9,8 @@ class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-secret-key'
     
     # Database config
-    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_UL') or \
-        'mysql+pymysql://myuser:101204@localhost:3306/school_management?charset=utf8mb4'
+    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or \
+        'mysql+pymysql://myuser:101204@db:3306/school_management?charset=utf8mb4'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
     # JWT config
@@ -20,8 +20,9 @@ class Config:
     JWT_ALGORITHM = 'HS256'
     
     # Redis config for token blacklist
-    REDIS_URL = os.environ.get('REDIS_URL') or 'redis://localhost:6379/0'
-    
+    # REDIS_URL = os.environ.get('REDIS_UL') or 'redis://localhost:6379/0'
+    REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/0")
+
     # CORS config
     CORS_ORIGINS = ["http://localhost:3000", "http://127.0.0.1:3000"]
 

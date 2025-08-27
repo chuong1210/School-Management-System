@@ -1,5 +1,8 @@
 from flask import Blueprint, request, jsonify
-from models import db, Class, Course, Schedule, Enrollment, EnrollmentStatus, Department
+from models import (
+    db, User, Student, Teacher, Course, Class, Schedule, Department,
+    Enrollment, UserType, ClassStatus, EnrollmentStatus
+)
 from decorators import teacher_required
 
 # Import helpers

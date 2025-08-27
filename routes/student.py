@@ -2,7 +2,7 @@ from flask import Blueprint, request, jsonify
 from datetime import datetime
 from models import (
     db, Enrollment, Class, Course, Department,
-    UserType, ClassStatus, EnrollmentStatus
+    UserType, ClassStatus, EnrollmentStatus,Schedule,Teacher, User,Student
 )
 from decorators import student_required
 
@@ -402,7 +402,7 @@ def get_student_gpa_by_semester(current_user):
         # Base query for student's completed enrollments
         query = Enrollment.query.join(Class).join(Course).filter(
             Enrollment.student_id == current_user.student.student_id,
-            Enrollment.status.in_(['Đã hoàn thành', 'Rớt môn']),
+            Enrollment.status.in_([EnrollmentStatus.COMPLETED.value, EnrollmentStatus.Failed.value]),
             Enrollment.score.isnot(None)
         )
         
@@ -442,7 +442,7 @@ def get_student_gpa_by_semester(current_user):
             # Calculate class average for comparison
             class_enrollments = Enrollment.query.filter(
                 Enrollment.class_id == enrollment.class_id,
-                Enrollment.status.in_(['Đã hoàn thành', 'Rớt môn']),
+                Enrollment.status.in_([EnrollmentStatus.COMPLETED.value, EnrollmentStatus.Failed.value]),
                 Enrollment.score.isnot(None)
             ).all()
             
@@ -509,14 +509,14 @@ def get_student_course_progress(current_user):
         # Get student's completed courses
         completed_enrollments = Enrollment.query.join(Class).join(Course).filter(
             Enrollment.student_id == current_user.student.student_id,
-            Enrollment.status.in_(['Đã hoàn thành', 'Rớt môn']),
+            Enrollment.status.in_([EnrollmentStatus.COMPLETED.value, EnrollmentStatus.Failed.value]),
             Course.department_id == current_user.student.department_id
         ).all()
         
         # Get currently enrolled courses
         current_enrollments = Enrollment.query.join(Class).join(Course).filter(
             Enrollment.student_id == current_user.student.student_id,
-            Enrollment.status == 'Đã đăng ký',
+            Enrollment.status == EnrollmentStatus.REGISTERED.value,
             Course.department_id == current_user.student.department_id
         ).all()
         
@@ -549,7 +549,7 @@ def get_student_course_progress(current_user):
                     'academic_year': enrollment.class_ref.academic_year
                 })
                 completed_credits += course.credits
-                if enrollment.status == 'Đã hoàn thành':
+                if enrollment.status == EnrollmentStatus.COMPLETED.value:
                     passed_credits += course.credits
                     
             elif course.course_id in current_course_ids:
@@ -572,7 +572,6 @@ def get_student_course_progress(current_user):
                     'description': course.description
                 })
         
-        # Calculate progress percentages
         completion_percentage = (completed_credits / total_credits_required * 100) if total_credits_required > 0 else 0
         pass_percentage = (passed_credits / total_credits_required * 100) if total_credits_required > 0 else 0
         

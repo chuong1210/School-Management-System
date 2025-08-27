@@ -114,10 +114,9 @@ class Teacher(db.Model):
     teacher_id = db.Column('TeacherID', db.Integer, primary_key=True, autoincrement=True)
     user_id = db.Column('UserID', db.Integer, db.ForeignKey('users.UserID'), nullable=False)
     teacher_code = db.Column('TeacherCode', db.String(20), unique=True)
-    department = db.Column('Department', db.String(100))  # Kept for backward compatibility
     hire_date = db.Column('HireDate', db.Date)
     department_id = db.Column('DepartmentID', db.Integer, db.ForeignKey('department.DepartmentID'))
-    
+
     # Relationships
     classes = db.relationship('Class', backref='teacher', cascade='all, delete-orphan')
     
@@ -126,7 +125,6 @@ class Teacher(db.Model):
             'teacher_id': self.teacher_id,
             'user_id': self.user_id,
             'teacher_code': self.teacher_code,
-            'department': self.department,
             'hire_date': self.hire_date.isoformat() if self.hire_date else None,
             'department_id': self.department_id
         }

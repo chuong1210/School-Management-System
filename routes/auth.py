@@ -162,6 +162,12 @@ def login():
         elif user.teacher:
             department_name = user.teacher.department
         
+        if user.student and user.student.department_id:
+            department = Department.query.get(user.student.department_id)
+            department_name = department.department_name if department else user.student.department
+        elif user.student:
+            department_name = user.student.department
+        
         claims = {
             'username': user.username,
             'user_type': user.user_type,

@@ -1,9 +1,10 @@
 from flask import Blueprint, request, jsonify
 from datetime import datetime
 import re
+
 from models import (
-    db, User, Student, Teacher, Course, Class, Schedule, Department,
-    Enrollment, UserType, ClassStatus, EnrollmentStatus
+    db, Enrollment, Class, Course, Department,
+    UserType, ClassStatus, EnrollmentStatus,Schedule,Teacher, User,Student
 )
 from decorators import manager_required
 
