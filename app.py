@@ -5,7 +5,10 @@ import os
 from datetime import datetime
 from config import config
 from models import db
-from routes import auth_bp, student_bp, teacher_bp, manager_bp
+from routes.auth import auth_bp
+from routes.student import student_bp
+from routes.teacher import teacher_bp
+from routes.manager import manager_bp
 from decorators import init_redis
 from flask_migrate import Migrate
 from sqlalchemy.exc import OperationalError

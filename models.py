@@ -19,7 +19,7 @@ class ClassStatus(Enum):
 class EnrollmentStatus(Enum):
     REGISTERED = "Đã đăng ký"
     CANCELLED = "Đã hủy"
-    COMPLETE = "Đã hoàn thành"
+    COMPLETED = "Đã hoàn thành"
     Failed ="Rớt môn"
 
 
