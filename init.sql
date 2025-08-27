@@ -70,7 +70,9 @@ CREATE TABLE   IF  NOT EXISTS classes (
  AcademicYear VARCHAR(10) NOT NULL,
  MaxCapacity INT,
  CurrentEnrollment INT DEFAULT 0,
- Status VARCHAR(20) NOT NULL CHECK (Status IN ('Mở đăng ký', 'Đóng đăng ký', 'Hoàn thành','Rớt môn')),
+ 
+
+ Status VARCHAR(20) NOT NULL CHECK (Status IN ('Mở đăng ký', 'Đang học', 'Hoàn thành')),
 
  StartDate DATE NOT NULL,
  EndDate DATE NOT NULL,
@@ -94,7 +96,7 @@ CREATE TABLE IF NOT EXISTS enrollments (
  ClassID INT,
  EnrollmentDate DATETIME,
  CancellationDate DATETIME DEFAULT NULL,
- Status ENUM('Đã đăng ký', 'Đã hủy', 'Đã hoàn thành') NOT NULL,
+ Status ENUM('Đã đăng ký', 'Đã hủy', 'Đã hoàn thành','Rớt môn') NOT NULL,
 
  Grade VARCHAR(6),
  Score DECIMAL(3,1) CHECK (Score >= 0 AND Score <= 10), -- điểm số 0 tới 10
