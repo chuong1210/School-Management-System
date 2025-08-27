@@ -259,6 +259,7 @@ curl -X POST https://ai-api.bitech.vn/api/manager/create-class \
   }'
 ```
 
+hihi
 **Kết quả**:
 
 ```json
