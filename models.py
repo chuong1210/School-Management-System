@@ -12,14 +12,15 @@ class UserType(Enum):
     MANAGER = "Cán bộ quản lý"
 
 class ClassStatus(Enum):
-    OPEN = "Mở"
-    CLOSED = "Đóng"
-    COMPLETED = "Hoàn thành"
+    OPEN = "Mở đăng ký"       # Enrollment Open
+    IN_PROGRESS = "Đang học"  # In Progress
+    COMPLETED = "Hoàn thành"  # Completed
 
 class EnrollmentStatus(Enum):
     REGISTERED = "Đã đăng ký"
     CANCELLED = "Đã hủy"
     COMPLETE = "Đã hoàn thành"
+    Failed ="Rớt môn"
 
 
 class Department(db.Model):
