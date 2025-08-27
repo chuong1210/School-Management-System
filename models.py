@@ -19,6 +19,23 @@ class EnrollmentStatus(Enum):
     REGISTERED = "Đã đăng ký"
     CANCELLED = "Đã hủy"
 
+class Department(db.Model):
+    __tablename__ = 'department'
+    
+    department_id = db.Column('DepartmentID', db.Integer, primary_key=True, autoincrement=True)
+    department_name = db.Column('DepartmentName', db.String(100), nullable=False, unique=True)
+    
+    # Relationships
+    courses = db.relationship('Course', backref='department', cascade='all, delete-orphan')
+    students = db.relationship('Student', backref='department')
+    teachers = db.relationship('Teacher', backref='department')
+    
+    def to_dict(self):
+        return {
+            'department_id': self.department_id,
+            'department_name': self.department_name
+        }
+
 class User(db.Model):
     __tablename__ = 'users'
     
@@ -71,6 +88,7 @@ class Student(db.Model):
     date_of_birth = db.Column('DateOfBirth', db.Date)
     major = db.Column('Major', db.String(100))
     enrollment_date = db.Column('EnrollmentDate', db.Date)
+    department_id = db.Column('DepartmentID', db.Integer, db.ForeignKey('department.DepartmentID'))
     
     # Relationships
     enrollments = db.relationship('Enrollment', backref='student', cascade='all, delete-orphan')
@@ -82,7 +100,8 @@ class Student(db.Model):
             'student_code': self.student_code,
             'date_of_birth': self.date_of_birth.isoformat() if self.date_of_birth else None,
             'major': self.major,
-            'enrollment_date': self.enrollment_date.isoformat() if self.enrollment_date else None
+            'enrollment_date': self.enrollment_date.isoformat() if self.enrollment_date else None,
+            'department_id': self.department_id
         }
 
 class Teacher(db.Model):
@@ -91,8 +110,9 @@ class Teacher(db.Model):
     teacher_id = db.Column('TeacherID', db.Integer, primary_key=True, autoincrement=True)
     user_id = db.Column('UserID', db.Integer, db.ForeignKey('users.UserID'), nullable=False)
     teacher_code = db.Column('TeacherCode', db.String(20), unique=True)
-    department = db.Column('Department', db.String(100))
+    department = db.Column('Department', db.String(100))  # Kept for backward compatibility
     hire_date = db.Column('HireDate', db.Date)
+    department_id = db.Column('DepartmentID', db.Integer, db.ForeignKey('department.DepartmentID'))
     
     # Relationships
     classes = db.relationship('Class', backref='teacher', cascade='all, delete-orphan')
@@ -103,7 +123,8 @@ class Teacher(db.Model):
             'user_id': self.user_id,
             'teacher_code': self.teacher_code,
             'department': self.department,
-            'hire_date': self.hire_date.isoformat() if self.hire_date else None
+            'hire_date': self.hire_date.isoformat() if self.hire_date else None,
+            'department_id': self.department_id
         }
 
 class Course(db.Model):
@@ -114,6 +135,7 @@ class Course(db.Model):
     course_name = db.Column('CourseName', db.String(200), nullable=False)
     credits = db.Column('Credits', db.Integer)
     description = db.Column('Description', db.Text)
+    department_id = db.Column('DepartmentID', db.Integer, db.ForeignKey('department.DepartmentID'))
     
     # Relationships
     classes = db.relationship('Class', backref='course', cascade='all, delete-orphan')
@@ -124,10 +146,10 @@ class Course(db.Model):
             'course_code': self.course_code,
             'course_name': self.course_name,
             'credits': self.credits,
-            'description': self.description
+            'description': self.description,
+            'department_id': self.department_id
         }
 
-# Update Class model in models.py
 class Class(db.Model):
     __tablename__ = 'classes'
     

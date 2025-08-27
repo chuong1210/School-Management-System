@@ -1,11 +1,11 @@
-from flask import Blueprint, request, jsonify, current_app,make_response
+from flask import Blueprint, request, jsonify, current_app, make_response
 from flask_jwt_extended import (
     create_access_token, create_refresh_token, jwt_required, 
     get_jwt_identity, get_jwt
 )
 from datetime import datetime, timedelta
 from models import (
-    db, User, Student, Teacher, Course, Class, Schedule, 
+    db, User, Student, Teacher, Course, Class, Schedule, Department,
     Enrollment, UserType, ClassStatus, EnrollmentStatus
 )
 from decorators import (
@@ -111,21 +111,45 @@ def register():
         
         # Create specific user type record
         if data['user_type'] == UserType.STUDENT.value:
+            # Validate department for student
+            department_id = data.get('department_id')
+            if department_id:
+                department = Department.query.get(department_id)
+                if not department:
+                    return error_response(
+                        'DEPARTMENT_NOT_FOUND',
+                        'Khoa không tồn tại.',
+                        {'department_id': department_id}
+                    )
+            
             student = Student(
                 user_id=user.user_id,
                 student_code=data.get('student_code'),
                 date_of_birth=datetime.strptime(data['date_of_birth'], '%Y-%m-%d').date() if data.get('date_of_birth') else None,
                 major=data.get('major'),
-                enrollment_date=datetime.strptime(data['enrollment_date'], '%Y-%m-%d').date() if data.get('enrollment_date') else None
+                enrollment_date=datetime.strptime(data['enrollment_date'], '%Y-%m-%d').date() if data.get('enrollment_date') else None,
+                department_id=department_id
             )
             db.session.add(student)
             
         elif data['user_type'] == UserType.TEACHER.value:
+            # Validate department for teacher
+            department_id = data.get('department_id')
+            if department_id:
+                department = Department.query.get(department_id)
+                if not department:
+                    return error_response(
+                        'DEPARTMENT_NOT_FOUND',
+                        'Khoa không tồn tại.',
+                        {'department_id': department_id}
+                    )
+            
             teacher = Teacher(
                 user_id=user.user_id,
                 teacher_code=data.get('teacher_code'),
-                department=data.get('department'),
-                hire_date=datetime.strptime(data['hire_date'], '%Y-%m-%d').date() if data.get('hire_date') else None
+                department=data.get('department'),  # Keep for backward compatibility
+                hire_date=datetime.strptime(data['hire_date'], '%Y-%m-%d').date() if data.get('hire_date') else None,
+                department_id=department_id
             )
             db.session.add(teacher)
         
@@ -171,33 +195,37 @@ def login():
         
         # Update last login
         user.update_last_login()
+        
+        # Get department info for claims
+        department_name = None
+        if user.teacher and user.teacher.department_id:
+            department = Department.query.get(user.teacher.department_id)
+            department_name = department.department_name if department else user.teacher.department
+        elif user.teacher:
+            department_name = user.teacher.department
+        
         claims = {
-        'username': user.username,
-        'user_type': user.user_type,
-        'full_name': user.full_name,
-        'department': getattr(user.teacher, 'department', None),
-        'major': getattr(user.student, 'major', None)
-    }
+            'username': user.username,
+            'user_type': user.user_type,
+            'full_name': user.full_name,
+            'department': department_name,
+        }
+        
         access_token = create_access_token(identity=str(user.user_id), additional_claims=claims)
-        # Create tokens
-        # access_token = create_access_token(
-        #     identity=str(user.user_id),
-        #     additional_claims={
-        #         'username': user.username,
-        #         'user_type': user.user_type,
-        #         'full_name': user.full_name,
-        #         'department': user.teacher.department if user.user_type == UserType.TEACHER.value else None,
-        #         'major': user.student.major if user.user_type == UserType.STUDENT.value else None
-        #     }
-        # )
         refresh_token = create_refresh_token(identity=str(user.user_id))
         
         # Get user-specific data
         user_data = user.to_dict()
         if user.user_type == UserType.STUDENT.value and user.student:
             user_data['student_info'] = user.student.to_dict()
+            if user.student.department_id:
+                department = Department.query.get(user.student.department_id)
+                user_data['department_info'] = department.to_dict() if department else None
         elif user.user_type == UserType.TEACHER.value and user.teacher:
             user_data['teacher_info'] = user.teacher.to_dict()
+            if user.teacher.department_id:
+                department = Department.query.get(user.teacher.department_id)
+                user_data['department_info'] = department.to_dict() if department else None
         
         return jsonify({
             'message': 'Login successful',
@@ -220,14 +248,21 @@ def refresh():
         if not user:
             return jsonify({'message': 'User not found'}), 404
         
+        # Get department info for claims
+        department_name = None
+        if user.teacher and user.teacher.department_id:
+            department = Department.query.get(user.teacher.department_id)
+            department_name = department.department_name if department else user.teacher.department
+        elif user.teacher:
+            department_name = user.teacher.department
+        
         new_access_token = create_access_token(
             identity=current_user_id,
             additional_claims={
                 'username': user.username,
                 'user_type': user.user_type,
                 'full_name': user.full_name,
-                'department': getattr(user.teacher, 'department', None),
-                'major': getattr(user.student, 'major', None)
+                'department': department_name,
             }
         )
         
@@ -264,8 +299,14 @@ def get_profile(current_user):
         # Add specific info based on user type
         if current_user.user_type == UserType.STUDENT.value and current_user.student:
             user_data['student_info'] = current_user.student.to_dict()
+            if current_user.student.department_id:
+                department = Department.query.get(current_user.student.department_id)
+                user_data['department_info'] = department.to_dict() if department else None
         elif current_user.user_type == UserType.TEACHER.value and current_user.teacher:
             user_data['teacher_info'] = current_user.teacher.to_dict()
+            if current_user.teacher.department_id:
+                department = Department.query.get(current_user.teacher.department_id)
+                user_data['department_info'] = department.to_dict() if department else None
         
         return jsonify({
             'user': user_data
@@ -350,25 +391,39 @@ def get_student_schedule(current_user):
 @student_bp.route('/enroll', methods=['POST'])
 @student_required
 def enroll_course(current_user):
-    """Enroll in a course"""
+    """Enroll in a course - only allow same department"""
     try:
         data = request.get_json()
         
         if not data.get('class_id'):
-            return jsonify({'message': 'class_id is required'}), 400
+            return error_response('MISSING_CLASS_ID', 'Yêu cầu cung cấp class_id.')
         
         if not current_user.student:
-            return jsonify({'message': 'Student profile not found'}), 404
+            return error_response('STUDENT_NOT_FOUND', 'Hồ sơ sinh viên không tồn tại.', status_code=404)
         
         class_obj = Class.query.get(data['class_id'])
         if not class_obj:
-            return jsonify({'message': 'Class not found'}), 404
+            return error_response('CLASS_NOT_FOUND', 'Lớp học không tồn tại.', status_code=404)
         
         if class_obj.status != ClassStatus.OPEN.value:
-            return jsonify({'message': 'Class is not open for enrollment'}), 400
+            return error_response('CLASS_NOT_OPEN', 'Lớp học không mở để đăng ký.')
         
         if class_obj.current_enrollment >= class_obj.max_capacity:
-            return jsonify({'message': 'Class is full'}), 400
+            return error_response('CLASS_FULL', 'Lớp học đã đầy.')
+        
+        # Check department match - student can only enroll in courses from their department
+        if current_user.student.department_id and class_obj.course.department_id:
+            if current_user.student.department_id != class_obj.course.department_id:
+                student_dept = Department.query.get(current_user.student.department_id)
+                course_dept = Department.query.get(class_obj.course.department_id)
+                return error_response(
+                    'DEPARTMENT_MISMATCH',
+                    'Bạn chỉ có thể đăng ký các lớp học thuộc chuyên ngành của mình.',
+                    {
+                        'student_department': student_dept.department_name if student_dept else None,
+                        'course_department': course_dept.department_name if course_dept else None
+                    }
+                )
         
         # Check if already enrolled
         existing_enrollment = Enrollment.query.filter_by(
@@ -378,7 +433,7 @@ def enroll_course(current_user):
         
         if existing_enrollment:
             if existing_enrollment.status == EnrollmentStatus.REGISTERED.value:
-                return jsonify({'message': 'Already enrolled in this class'}), 409
+                return error_response('ALREADY_ENROLLED', 'Bạn đã đăng ký lớp học này.', status_code=409)
             else:
                 # Re-enroll if previously cancelled
                 existing_enrollment.status = EnrollmentStatus.REGISTERED.value
@@ -396,20 +451,28 @@ def enroll_course(current_user):
         class_obj.current_enrollment += 1
         db.session.commit()
         
-        return jsonify({
-            'message': 'Successfully enrolled in class',
-            'class_info': {
-                'class_id': class_obj.class_id,
-                'course_name': class_obj.course.course_name,
-                'course_code': class_obj.course.course_code,
-                'semester': class_obj.semester,
-                'academic_year': class_obj.academic_year
+        return success_response(
+            'Đăng ký lớp học thành công.',
+            {
+                'class_info': {
+                    'class_id': class_obj.class_id,
+                    'course_name': class_obj.course.course_name,
+                    'course_code': class_obj.course.course_code,
+                    'semester': class_obj.semester,
+                    'academic_year': class_obj.academic_year
+                }
             }
-        }), 200
+        )
         
     except Exception as e:
         db.session.rollback()
-        return jsonify({'message': 'Enrollment failed', 'error': str(e)}), 500
+        return error_response(
+            'ENROLL_FAILED',
+            'Đăng ký lớp học thất bại.',
+            {'error_details': str(e)},
+            500
+        )
+
 @student_bp.route('/cancel-enrollment', methods=['POST'])
 @student_required
 def cancel_enrollment(current_user):
@@ -418,15 +481,15 @@ def cancel_enrollment(current_user):
         data = request.get_json()
         
         if not data.get('class_id'):
-            return error_response('MISSING_CLASS_ID', 'Yêu cầu cung cấp class_id.', 400)
+            return error_response('MISSING_CLASS_ID', 'Yêu cầu cung cấp class_id.')
         
         if not current_user.student:
-            return error_response('STUDENT_NOT_FOUND', 'Hồ sơ sinh viên không tồn tại.', 404)
+            return error_response('STUDENT_NOT_FOUND', 'Hồ sơ sinh viên không tồn tại.', status_code=404)
         
         # Verify class exists
         class_obj = Class.query.get(data['class_id'])
         if not class_obj:
-            return error_response('CLASS_NOT_FOUND', 'Lớp học không tồn tại.', 404)
+            return error_response('CLASS_NOT_FOUND', 'Lớp học không tồn tại.', status_code=404)
         
         # Check if class is open
         if class_obj.status != ClassStatus.OPEN.value:
@@ -447,8 +510,7 @@ def cancel_enrollment(current_user):
             return error_response(
                 'NOT_ENROLLED',
                 'Bạn chưa đăng ký lớp học này hoặc đăng ký đã bị hủy.',
-                {'class_id': data['class_id']},
-                400
+                {'class_id': data['class_id']}
             )
         
         # Check cancellation period (within 14 days from class start date)
@@ -471,25 +533,6 @@ def cancel_enrollment(current_user):
                 'GRADE_ASSIGNED',
                 'Không thể hủy đăng ký vì điểm đã được ghi nhận.',
                 {'class_id': data['class_id']}
-            )
-        
-        # Optional: Check minimum credit requirement (example: 12 credits for full-time status)
-        # Calculate current enrolled credits
-        enrolled_classes = Enrollment.query.filter_by(
-            student_id=current_user.student.student_id,
-            status=EnrollmentStatus.REGISTERED.value
-        ).all()
-        total_credits = sum(
-            Class.query.get(enrollment.class_id).course.credits
-            for enrollment in enrolled_classes
-            if enrollment.class_id != data['class_id']
-        )
-        # Assume minimum 12 credits required for full-time status
-        if total_credits < 12:
-            return error_response(
-                'MINIMUM_CREDIT_VIOLATION',
-                'Hủy đăng ký sẽ khiến tổng số tín chỉ dưới mức tối thiểu (12 tín chỉ).',
-                {'current_credits': total_credits, 'minimum_required': 12}
             )
         
         # Update enrollment status and record cancellation time
@@ -522,22 +565,32 @@ def cancel_enrollment(current_user):
             {'error_details': str(e)},
             500
         )
+
 @student_bp.route('/available-classes', methods=['GET'])
 @student_required
 def get_available_classes(current_user):
-    """Get available classes for enrollment"""
+    """Get available classes for enrollment - only from same department"""
     try:
-        # Get classes that are open and not full
-        available_classes = Class.query.filter(
+        if not current_user.student:
+            return error_response('STUDENT_NOT_FOUND', 'Hồ sơ sinh viên không tồn tại.', status_code=404)
+        
+        # Base query for open classes with available capacity
+        query = Class.query.join(Course).filter(
             Class.status == ClassStatus.OPEN.value,
             Class.current_enrollment < Class.max_capacity
-        ).all()
+        )
+        
+        # Filter by student's department if available
+        if current_user.student.department_id:
+            query = query.filter(Course.department_id == current_user.student.department_id)
+        
+        available_classes = query.all()
         
         classes_data = []
         for class_obj in available_classes:
             # Check if student is already enrolled
             enrolled = Enrollment.query.filter_by(
-                student_id=current_user.student.student_id if current_user.student else None,
+                student_id=current_user.student.student_id,
                 class_id=class_obj.class_id,
                 status=EnrollmentStatus.REGISTERED.value
             ).first()
@@ -545,6 +598,12 @@ def get_available_classes(current_user):
             if not enrolled:
                 class_data = class_obj.to_dict()
                 class_data['course_info'] = class_obj.course.to_dict()
+                
+                # Add department info
+                if class_obj.course.department_id:
+                    department = Department.query.get(class_obj.course.department_id)
+                    class_data['department_info'] = department.to_dict() if department else None
+                
                 if class_obj.teacher:
                     class_data['teacher_info'] = {
                         'teacher_name': class_obj.teacher.user.full_name,
@@ -600,36 +659,6 @@ def get_teaching_schedule(current_user):
     except Exception as e:
         return jsonify({'message': 'Failed to get teaching schedule', 'error': str(e)}), 500
 
-@teacher_bp.route('/notifications', methods=['GET'])
-@teacher_required
-def get_teacher_notifications(current_user):
-    """Get notifications for teachers"""
-    try:
-        # Mock notifications for teachers
-        notifications = [
-            {
-                'id': 1,
-                'title': 'Thông báo họp khoa',
-                'content': 'Họp khoa định kỳ tháng 12 vào lúc 14:00 ngày 15/12/2024',
-                'date': '2024-12-01',
-                'type': 'meeting'
-            },
-            {
-                'id': 2,
-                'title': 'Thông báo chi trả lương',
-                'content': 'Lương tháng 11 đã được chuyển vào tài khoản',
-                'date': '2024-11-30',
-                'type': 'salary'
-            }
-        ]
-        
-        return jsonify({
-            'notifications': notifications
-        }), 200
-        
-    except Exception as e:
-        return jsonify({'message': 'Failed to get notifications', 'error': str(e)}), 500
-
 @teacher_bp.route('/students', methods=['GET'])
 @teacher_required
 def get_teacher_students(current_user):
@@ -666,6 +695,12 @@ def get_teacher_students(current_user):
                     },
                     'grade': enrollment.grade
                 }
+                
+                # Add department info
+                if student.department_id:
+                    department = Department.query.get(student.department_id)
+                    student_data['department_info'] = department.to_dict() if department else None
+                
                 students_data.append(student_data)
         
         return jsonify({
@@ -693,6 +728,11 @@ def get_teacher_courses(current_user):
             if class_obj.course_id not in course_ids:
                 course_ids.add(class_obj.course_id)
                 course_data = class_obj.course.to_dict()
+                
+                # Add department info
+                if class_obj.course.department_id:
+                    department = Department.query.get(class_obj.course.department_id)
+                    course_data['department_info'] = department.to_dict() if department else None
                 
                 # Add class information
                 course_classes = [c for c in classes if c.course_id == class_obj.course_id]
@@ -730,6 +770,7 @@ def get_system_overview(current_user):
         total_classes = Class.query.count()
         active_classes = Class.query.filter_by(status=ClassStatus.OPEN.value).count()
         total_enrollments = Enrollment.query.filter_by(status=EnrollmentStatus.REGISTERED.value).count()
+        total_departments = Department.query.count()
         
         return jsonify({
             'overview': {
@@ -738,193 +779,28 @@ def get_system_overview(current_user):
                 'total_courses': total_courses,
                 'total_classes': total_classes,
                 'active_classes': active_classes,
-                'total_enrollments': total_enrollments
+                'total_enrollments': total_enrollments,
+                'total_departments': total_departments
             }
         }), 200
         
     except Exception as e:
         return jsonify({'message': 'Failed to get overview', 'error': str(e)}), 500
 
-# @manager_bp.route('/create-class', methods=['POST'])
-# @manager_required
-# def create_class(current_user):
-#     """Create a new class"""
-#     try:
-#         data = request.get_json()
-        
-#         required_fields = ['course_id', 'semester', 'academic_year', 'max_capacity']
-#         for field in required_fields:
-#             if not data.get(field):
-#                 return jsonify({'message': f'{field} is required'}), 400
-        
-#         # Verify course exists
-#         course = Course.query.get(data['course_id'])
-#         if not course:
-#             return jsonify({'message': 'Course not found'}), 404
-        
-#         # Verify teacher exists (if provided)
-#         teacher = None
-#         if data.get('teacher_id'):
-#             teacher = Teacher.query.get(data['teacher_id'])
-#             if not teacher:
-#                 return jsonify({'message': 'Teacher not found'}), 404
-        
-#         # Create new class
-#         new_class = Class(
-#             course_id=data['course_id'],
-#             teacher_id=data.get('teacher_id'),
-#             semester=data['semester'],
-#             academic_year=data['academic_year'],
-#             max_capacity=data['max_capacity'],
-#             status=data.get('status', ClassStatus.OPEN.value)
-#         )
-        
-#         db.session.add(new_class)
-#         db.session.commit()
-        
-#         class_data = new_class.to_dict()
-#         class_data['course_info'] = course.to_dict()
-#         if teacher:
-#             class_data['teacher_info'] = {
-#                 'teacher_name': teacher.user.full_name,
-#                 'department': teacher.department
-#             }
-        
-#         return jsonify({
-#             'message': 'Class created successfully',
-#             'class': class_data
-#         }), 201
-        
-#     except Exception as e:
-#         db.session.rollback()
-#         return jsonify({'message': 'Failed to create class', 'error': str(e)}), 500
-
-@manager_bp.route('/assign-teacher', methods=['POST'])
+@manager_bp.route('/departments', methods=['GET'])
 @manager_required
-def assign_teacher(current_user):
-    """Assign teacher to a class"""
+def get_all_departments(current_user):
+    """Get all departments"""
     try:
-        data = request.get_json()
-        
-        if not data.get('class_id') or not data.get('teacher_id'):
-            return jsonify({'message': 'class_id and teacher_id are required'}), 400
-        
-        # Verify class exists
-        class_obj = Class.query.get(data['class_id'])
-        if not class_obj:
-            return jsonify({'message': 'Class not found'}), 404
-        
-        # Verify teacher exists
-        teacher = Teacher.query.get(data['teacher_id'])
-        if not teacher:
-            return jsonify({'message': 'Teacher not found'}), 404
-        
-        # Assign teacher to class
-        class_obj.teacher_id = data['teacher_id']
-        db.session.commit()
+        departments = Department.query.all()
+        departments_data = [dept.to_dict() for dept in departments]
         
         return jsonify({
-            'message': 'Teacher assigned successfully',
-            'class_id': class_obj.class_id,
-            'teacher_name': teacher.user.full_name,
-            'course_name': class_obj.course.course_name
+            'departments': departments_data
         }), 200
         
     except Exception as e:
-        db.session.rollback()
-        return jsonify({'message': 'Failed to assign teacher', 'error': str(e)}), 500
-
-@manager_bp.route('/all-users', methods=['GET'])
-@manager_required
-def get_all_users(current_user):
-    """Get all users in the system"""
-    try:
-        page = request.args.get('page', 1, type=int)
-        per_page = request.args.get('per_page', 20, type=int)
-        user_type = request.args.get('user_type')
-        
-        query = User.query
-        
-        if user_type:
-            query = query.filter_by(user_type=user_type)
-        
-        users = query.paginate(
-            page=page, per_page=per_page, error_out=False
-        )
-        
-        users_data = []
-        for user in users.items:
-            user_data = user.to_dict()
-            
-            # Add specific info based on user type
-            if user.user_type == UserType.STUDENT.value and user.student:
-                user_data['student_info'] = user.student.to_dict()
-            elif user.user_type == UserType.TEACHER.value and user.teacher:
-                user_data['teacher_info'] = user.teacher.to_dict()
-            
-            users_data.append(user_data)
-        
-        return jsonify({
-            'users': users_data,
-            'pagination': {
-                'page': users.page,
-                'pages': users.pages,
-                'per_page': users.per_page,
-                'total': users.total,
-                'has_next': users.has_next,
-                'has_prev': users.has_prev
-            }
-        }), 200
-        
-    except Exception as e:
-        return jsonify({'message': 'Failed to get users', 'error': str(e)}), 500
-
-@manager_bp.route('/all-classes', methods=['GET'])
-@manager_required
-def get_all_classes(current_user):
-    """Get all classes in the system"""
-    try:
-        page = request.args.get('page', 1, type=int)
-        per_page = request.args.get('per_page', 20, type=int)
-        
-        classes = Class.query.paginate(
-            page=page, per_page=per_page, error_out=False
-        )
-        
-        classes_data = []
-        for class_obj in classes.items:
-            class_data = class_obj.to_dict()
-            class_data['course_info'] = class_obj.course.to_dict()
-            
-            if class_obj.teacher:
-                class_data['teacher_info'] = {
-                    'teacher_name': class_obj.teacher.user.full_name,
-                    'department': class_obj.teacher.department
-                }
-            
-            classes_data.append(class_data)
-        
-        return jsonify({
-            'classes': classes_data,
-            'pagination': {
-                'page': classes.page,
-                'pages': classes.pages,
-                'per_page': classes.per_page,  
-                'total': classes.total,
-                'has_next': classes.has_next,
-                'has_prev': classes.has_prev
-            }
-        }), 200
-        
-    except Exception as e:
-        return jsonify({'message': 'Failed to get classes', 'error': str(e)}), 500
-from datetime import datetime
-from flask import Blueprint, request, jsonify
-from models import db, User, Student, Teacher, Course, Class, UserType, ClassStatus
-from decorators import manager_required
-from routes import error_response, success_response
-
-# ====================== MANAGER ROUTES ======================
+        return jsonify({'message': 'Failed to get departments', 'error': str(e)}), 500
 
 @manager_bp.route('/create-class', methods=['POST'])
 @manager_required
@@ -945,7 +821,7 @@ def create_class(current_user):
         # Verify course exists
         course = Course.query.get(data['course_id'])
         if not course:
-            return error_response('COURSE_NOT_FOUND', 'Khóa học không tồn tại.', 404)
+            return error_response('COURSE_NOT_FOUND', 'Khóa học không tồn tại.', status_code=404)
         
         # Validate dates
         try:
@@ -977,6 +853,11 @@ def create_class(current_user):
         class_data = new_class.to_dict()
         class_data['course_info'] = course.to_dict()
         
+        # Add department info
+        if course.department_id:
+            department = Department.query.get(course.department_id)
+            class_data['department_info'] = department.to_dict() if department else None
+        
         return success_response(
             'Tạo lớp học thành công.',
             {'class': class_data},
@@ -992,81 +873,62 @@ def create_class(current_user):
             500
         )
 
-@manager_bp.route('/update-class/<int:class_id>', methods=['PUT'])
+@manager_bp.route('/assign-teacher', methods=['POST'])
 @manager_required
-def update_class(current_user, class_id):
-    """Update class information with restrictions"""
+def assign_teacher(current_user):
+    """Assign teacher to a class - only allow same department"""
     try:
         data = request.get_json()
-        class_obj = Class.query.get(class_id)
         
-        if not class_obj:
-            return error_response('CLASS_NOT_FOUND', 'Lớp học không tồn tại.', 404)
-        
-        # Prevent updating course_id
-        if 'course_id' in data:
+        if not data.get('class_id') or not data.get('teacher_id'):
             return error_response(
-                'INVALID_UPDATE',
-                'Không được phép cập nhật ID khóa học.',
-                {'field': 'course_id'}
+                'MISSING_REQUIRED_FIELDS',
+                'class_id và teacher_id là bắt buộc.',
+                {'required_fields': ['class_id', 'teacher_id']}
             )
         
-        # Validate status update based on timing
-        if 'status' in data:
-            current_date = datetime.utcnow().date()
-            try:
-                start_date = class_obj.start_date
-                end_date = class_obj.end_date
-                
-                if data['status'] == ClassStatus.COMPLETED.value and current_date < end_date:
-                    return error_response(
-                        'INVALID_STATUS_UPDATE',
-                        'Không thể hoàn thành lớp học trước ngày kết thúc.',
-                        {'current_date': current_date.isoformat(), 'end_date': end_date.isoformat()}
-                    )
-                if data['status'] == ClassStatus.OPEN.value and current_date > start_date:
-                    return error_response(
-                        'INVALID_STATUS_UPDATE',
-                        'Không thể mở lại lớp học sau ngày bắt đầu.',
-                        {'current_date': current_date.isoformat(), 'start_date': start_date.isoformat()}
-                    )
-            except AttributeError:
+        # Verify class exists
+        class_obj = Class.query.get(data['class_id'])
+        if not class_obj:
+            return error_response('CLASS_NOT_FOUND', 'Lớp học không tồn tại.', status_code=404)
+        
+        # Verify teacher exists
+        teacher = Teacher.query.get(data['teacher_id'])
+        if not teacher:
+            return error_response('TEACHER_NOT_FOUND', 'Giáo viên không tồn tại.', status_code=404)
+        
+        # Check department match - teacher can only teach courses from their department
+        if teacher.department_id and class_obj.course.department_id:
+            if teacher.department_id != class_obj.course.department_id:
+                teacher_dept = Department.query.get(teacher.department_id)
+                course_dept = Department.query.get(class_obj.course.department_id)
                 return error_response(
-                    'MISSING_DATES',
-                    'Lớp học không có ngày bắt đầu hoặc kết thúc.',
-                    {'class_id': class_id}
+                    'DEPARTMENT_MISMATCH',
+                    'Giáo viên chỉ có thể dạy các lớp học thuộc chuyên ngành của mình.',
+                    {
+                        'teacher_department': teacher_dept.department_name if teacher_dept else None,
+                        'course_department': course_dept.department_name if course_dept else None
+                    }
                 )
         
-        # Update allowed fields
-        allowed_fields = ['semester', 'academic_year', 'max_capacity', 'start_date', 'end_date', 'status']
-        for field in allowed_fields:
-            if field in data:
-                if field in ['start_date', 'end_date']:
-                    try:
-                        setattr(class_obj, field, datetime.strptime(data[field], '%Y-%m-%d').date())
-                    except ValueError:
-                        return error_response(
-                            'INVALID_DATE_FORMAT',
-                            f'Định dạng ngày không hợp lệ cho {field} (YYYY-MM-DD).'
-                        )
-                else:
-                    setattr(class_obj, field, data[field])
-        
+        # Assign teacher to class
+        class_obj.teacher_id = data['teacher_id']
         db.session.commit()
         
-        class_data = class_obj.to_dict()
-        class_data['course_info'] = class_obj.course.to_dict()
-        
         return success_response(
-            'Cập nhật lớp học thành công.',
-            {'class': class_data}
+            'Phân công giáo viên thành công.',
+            {
+                'class_id': class_obj.class_id,
+                'teacher_name': teacher.user.full_name,
+                'course_name': class_obj.course.course_name
+            }
         )
         
     except Exception as e:
         db.session.rollback()
         return error_response(
-            'UPDATE_CLASS_FAILED',
-            'Cập nhật lớp học thất bại.',
+            'ASSIGN_TEACHER_FAILED',
+            'Phân công giáo viên thất bại.',
             {'error_details': str(e)},
             500
         )
@@ -1078,7 +940,7 @@ def add_student(current_user):
     try:
         data = request.get_json()
         
-        required_fields = ['username', 'password', 'full_name', 'email', 'phone_number', 'major']
+        required_fields = ['username', 'password', 'full_name', 'email', 'phone_number', 'major', 'department_id']
         missing_fields = [field for field in required_fields if not data.get(field)]
         if missing_fields:
             return error_response(
@@ -1103,6 +965,16 @@ def add_student(current_user):
                 'Email đã được sử dụng.',
                 {'email': data['email']},
                 409
+            )
+        
+        # Verify department exists
+        department = Department.query.get(data['department_id'])
+        if not department:
+            return error_response(
+                'DEPARTMENT_NOT_FOUND',
+                'Khoa không tồn tại.',
+                {'department_id': data['department_id']},
+                404
             )
         
         # Create user
@@ -1120,13 +992,18 @@ def add_student(current_user):
         # Create student
         student = Student(
             user_id=user.user_id,
-            major=data['major']
+            major=data['major'],
+            department_id=data['department_id'],
+            student_code=data.get('student_code'),
+            date_of_birth=datetime.strptime(data['date_of_birth'], '%Y-%m-%d').date() if data.get('date_of_birth') else None,
+            enrollment_date=datetime.strptime(data['enrollment_date'], '%Y-%m-%d').date() if data.get('enrollment_date') else None
         )
         db.session.add(student)
         db.session.commit()
         
         user_data = user.to_dict()
         user_data['student_info'] = student.to_dict()
+        user_data['department_info'] = department.to_dict()
         
         return success_response(
             'Thêm sinh viên thành công.',
@@ -1143,67 +1020,6 @@ def add_student(current_user):
             500
         )
 
-@manager_bp.route('/update-student/<int:student_id>', methods=['PUT'])
-@manager_required
-def update_student(current_user, student_id):
-    """Update student information"""
-    try:
-        data = request.get_json()
-        student = Student.query.get(student_id)
-        
-        if not student:
-            return error_response('STUDENT_NOT_FOUND', 'Sinh viên không tồn tại.', 404)
-        
-        user = student.user
-        
-        # Validate updates
-        if 'username' in data:
-            return error_response(
-                'INVALID_UPDATE',
-                'Không được phép cập nhật tên đăng nhập.',
-                {'field': 'username'}
-            )
-        
-        if 'email' in data and data['email'] != user.email:
-            if User.query.filter_by(email=data['email']).first():
-                return error_response(
-                    'EMAIL_EXISTS',
-                    'Email đã được sử dụng.',
-                    {'email': data['email']},
-                    409
-                )
-        
-        # Update allowed fields
-        allowed_user_fields = ['full_name', 'email', 'phone_number']
-        for field in allowed_user_fields:
-            if field in data:
-                setattr(user, field, data[field])
-        
-        if 'password' in data:
-            user.set_password(data['password'])
-        
-        if 'major' in data:
-            student.major = data['major']
-        
-        db.session.commit()
-        
-        user_data = user.to_dict()
-        user_data['student_info'] = student.to_dict()
-        
-        return success_response(
-            'Cập nhật thông tin sinh viên thành công.',
-            {'user': user_data}
-        )
-        
-    except Exception as e:
-        db.session.rollback()
-        return error_response(
-            'UPDATE_STUDENT_FAILED',
-            'Cập nhật thông tin sinh viên thất bại.',
-            {'error_details': str(e)},
-            500
-        )
-
 @manager_bp.route('/add-teacher', methods=['POST'])
 @manager_required
 def add_teacher(current_user):
@@ -1211,7 +1027,7 @@ def add_teacher(current_user):
     try:
         data = request.get_json()
         
-        required_fields = ['username', 'password', 'full_name', 'email', 'phone_number', 'department']
+        required_fields = ['username', 'password', 'full_name', 'email', 'phone_number', 'department', 'department_id']
         missing_fields = [field for field in required_fields if not data.get(field)]
         if missing_fields:
             return error_response(
@@ -1238,6 +1054,16 @@ def add_teacher(current_user):
                 409
             )
         
+        # Verify department exists
+        department = Department.query.get(data['department_id'])
+        if not department:
+            return error_response(
+                'DEPARTMENT_NOT_FOUND',
+                'Khoa không tồn tại.',
+                {'department_id': data['department_id']},
+                404
+            )
+        
         # Create user
         user = User(
             username=data['username'],
@@ -1253,13 +1079,17 @@ def add_teacher(current_user):
         # Create teacher
         teacher = Teacher(
             user_id=user.user_id,
-            department=data['department']
+            department=data['department'],
+            department_id=data['department_id'],
+            teacher_code=data.get('teacher_code'),
+            hire_date=datetime.strptime(data['hire_date'], '%Y-%m-%d').date() if data.get('hire_date') else None
         )
         db.session.add(teacher)
         db.session.commit()
         
         user_data = user.to_dict()
         user_data['teacher_info'] = teacher.to_dict()
+        user_data['department_info'] = department.to_dict()
         
         return success_response(
             'Thêm giáo viên thành công.',
@@ -1276,63 +1106,178 @@ def add_teacher(current_user):
             500
         )
 
-@manager_bp.route('/update-teacher/<int:teacher_id>', methods=['PUT'])
+@manager_bp.route('/all-users', methods=['GET'])
 @manager_required
-def update_teacher(current_user, teacher_id):
-    """Update teacher information"""
+def get_all_users(current_user):
+    """Get all users in the system"""
+    try:
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 20, type=int)
+        user_type = request.args.get('user_type')
+        department_id = request.args.get('department_id', type=int)
+        
+        query = User.query
+        
+        if user_type:
+            query = query.filter_by(user_type=user_type)
+        
+        # Filter by department if specified
+        if department_id:
+            if user_type == UserType.STUDENT.value:
+                query = query.join(Student).filter(Student.department_id == department_id)
+            elif user_type == UserType.TEACHER.value:
+                query = query.join(Teacher).filter(Teacher.department_id == department_id)
+        
+        users = query.paginate(
+            page=page, per_page=per_page, error_out=False
+        )
+        
+        users_data = []
+        for user in users.items:
+            user_data = user.to_dict()
+            
+            # Add specific info based on user type
+            if user.user_type == UserType.STUDENT.value and user.student:
+                user_data['student_info'] = user.student.to_dict()
+                if user.student.department_id:
+                    department = Department.query.get(user.student.department_id)
+                    user_data['department_info'] = department.to_dict() if department else None
+            elif user.user_type == UserType.TEACHER.value and user.teacher:
+                user_data['teacher_info'] = user.teacher.to_dict()
+                if user.teacher.department_id:
+                    department = Department.query.get(user.teacher.department_id)
+                    user_data['department_info'] = department.to_dict() if department else None
+            
+            users_data.append(user_data)
+        
+        return jsonify({
+            'users': users_data,
+            'pagination': {
+                'page': users.page,
+                'pages': users.pages,
+                'per_page': users.per_page,
+                'total': users.total,
+                'has_next': users.has_next,
+                'has_prev': users.has_prev
+            }
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'message': 'Failed to get users', 'error': str(e)}), 500
+
+@manager_bp.route('/all-classes', methods=['GET'])
+@manager_required
+def get_all_classes(current_user):
+    """Get all classes in the system"""
+    try:
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 20, type=int)
+        department_id = request.args.get('department_id', type=int)
+        
+        query = Class.query.join(Course)
+        
+        # Filter by department if specified
+        if department_id:
+            query = query.filter(Course.department_id == department_id)
+        
+        classes = query.paginate(
+            page=page, per_page=per_page, error_out=False
+        )
+        
+        classes_data = []
+        for class_obj in classes.items:
+            class_data = class_obj.to_dict()
+            class_data['course_info'] = class_obj.course.to_dict()
+            
+            # Add department info
+            if class_obj.course.department_id:
+                department = Department.query.get(class_obj.course.department_id)
+                class_data['department_info'] = department.to_dict() if department else None
+            
+            if class_obj.teacher:
+                class_data['teacher_info'] = {
+                    'teacher_name': class_obj.teacher.user.full_name,
+                    'department': class_obj.teacher.department
+                }
+            
+            classes_data.append(class_data)
+        
+        return jsonify({
+            'classes': classes_data,
+            'pagination': {
+                'page': classes.page,
+                'pages': classes.pages,
+                'per_page': classes.per_page,  
+                'total': classes.total,
+                'has_next': classes.has_next,
+                'has_prev': classes.has_prev
+            }
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'message': 'Failed to get classes', 'error': str(e)}), 500
+
+@manager_bp.route('/create-course', methods=['POST'])
+@manager_required
+def create_course(current_user):
+    """Create a new course"""
     try:
         data = request.get_json()
-        teacher = Teacher.query.get(teacher_id)
         
-        if not teacher:
-            return error_response('TEACHER_NOT_FOUND', 'Giáo viên không tồn tại.', 404)
-        
-        user = teacher.user
-        
-        # Validate updates
-        if 'username' in data:
+        required_fields = ['course_code', 'course_name', 'credits', 'department_id']
+        missing_fields = [field for field in required_fields if not data.get(field)]
+        if missing_fields:
             return error_response(
-                'INVALID_UPDATE',
-                'Không được phép cập nhật tên đăng nhập.',
-                {'field': 'username'}
+                'MISSING_REQUIRED_FIELDS',
+                'Thiếu các trường bắt buộc.',
+                {'missing_fields': missing_fields, 'required_fields': required_fields}
             )
         
-        if 'email' in data and data['email'] != user.email:
-            if User.query.filter_by(email=data['email']).first():
-                return error_response(
-                    'EMAIL_EXISTS',
-                    'Email đã được sử dụng.',
-                    {'email': data['email']},
-                    409
-                )
+        # Check if course code exists
+        if Course.query.filter_by(course_code=data['course_code']).first():
+            return error_response(
+                'COURSE_CODE_EXISTS',
+                'Mã khóa học đã tồn tại.',
+                {'course_code': data['course_code']},
+                409
+            )
         
-        # Update allowed fields
-        allowed_user_fields = ['full_name', 'email', 'phone_number']
-        for field in allowed_user_fields:
-            if field in data:
-                setattr(user, field, data[field])
+        # Verify department exists
+        department = Department.query.get(data['department_id'])
+        if not department:
+            return error_response(
+                'DEPARTMENT_NOT_FOUND',
+                'Khoa không tồn tại.',
+                {'department_id': data['department_id']},
+                404
+            )
         
-        if 'password' in data:
-            user.set_password(data['password'])
+        # Create course
+        course = Course(
+            course_code=data['course_code'],
+            course_name=data['course_name'],
+            credits=data['credits'],
+            description=data.get('description'),
+            department_id=data['department_id']
+        )
         
-        if 'department' in data:
-            teacher.department = data['department']
-        
+        db.session.add(course)
         db.session.commit()
         
-        user_data = user.to_dict()
-        user_data['teacher_info'] = teacher.to_dict()
+        course_data = course.to_dict()
+        course_data['department_info'] = department.to_dict()
         
         return success_response(
-            'Cập nhật thông tin giáo viên thành công.',
-            {'user': user_data}
+            'Tạo khóa học thành công.',
+            {'course': course_data},
+            201
         )
         
     except Exception as e:
         db.session.rollback()
         return error_response(
-            'UPDATE_TEACHER_FAILED',
-            'Cập nhật thông tin giáo viên thất bại.',
+            'CREATE_COURSE_FAILED',
+            'Tạo khóa học thất bại.',
             {'error_details': str(e)},
             500
         )
