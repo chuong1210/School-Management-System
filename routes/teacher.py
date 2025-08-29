@@ -140,7 +140,7 @@ def get_teacher_students(current_user):
         }), 200
         
     except Exception as e:
-        return jsonify({'message': 'Failed to get students', 'error': str(e)}), 500
+        return jsonify({'message': 'FAILED to get students', 'error': str(e)}), 500
 
 @teacher_bp.route('/courses', methods=['GET'])
 @teacher_required
@@ -186,7 +186,7 @@ def get_teacher_courses(current_user):
         }), 200
         
     except Exception as e:
-        return jsonify({'message': 'Failed to get courses', 'error': str(e)}), 500
+        return jsonify({'message': 'FAILED to get courses', 'error': str(e)}), 500
 
 @teacher_bp.route('/student-grades-analysis', methods=['GET'])
 @teacher_required
@@ -218,7 +218,7 @@ def get_student_grades_analysis(current_user):
             # Get graded enrollments
             graded_enrollments = Enrollment.query.filter(
                 Enrollment.class_id == class_obj.class_id,
-                Enrollment.status.in_(['Đã hoàn thành', 'Rớt môn']),
+                Enrollment.status.in_([EnrollmentStatus.COMPLETED.value, EnrollmentStatus.FAILED.value]),
                 Enrollment.score.isnot(None)
             ).all()
             
@@ -341,7 +341,7 @@ def get_class_enrollment_statistics(current_user):
             # Get enrolled students
             enrolled_students = Enrollment.query.filter_by(
                 class_id=class_obj.class_id,
-                status='Đã đăng ký'
+                status=EnrollmentStatus.REGISTERED.value
             ).all()
             
             enrollment_percentage = (len(enrolled_students) / class_obj.max_capacity * 100) if class_obj.max_capacity > 0 else 0

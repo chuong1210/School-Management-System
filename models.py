@@ -20,7 +20,8 @@ class EnrollmentStatus(Enum):
     REGISTERED = "Đã đăng ký"
     CANCELLED = "Đã hủy"
     COMPLETED = "Đã hoàn thành"
-    Failed ="Rớt môn"
+    FAILED ="Rớt môn"
+    PASSED="Đậu"
 
 
 class Department(db.Model):

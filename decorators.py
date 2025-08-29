@@ -3,7 +3,7 @@ from flask import jsonify, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
 from datetime import datetime
 import redis
-from models import User, UserType
+from models import User, UserType, Department
 
 # Redis client for token blacklist
 redis_client = None
@@ -72,6 +72,15 @@ def role_required(*allowed_roles):
         @token_required
         def decorated(current_user, *args, **kwargs):
             if current_user.user_type not in allowed_roles:
+                if current_user.teacher and current_user.teacher.department_id:
+                    department = Department.query.get(current_user.teacher.department_id)
+                    department_name = department.department_name 
+                elif current_user.teacher:
+                    department_name = current_user.teacher.department
+        
+                if current_user.student and current_user.student.department_id:
+                    department = Department.query.get(current_user.student.department_id)
+                    department_name = department.department_name 
                 return jsonify({
                     'error': 'INSUFFICIENT_PERMISSIONS',
                     'message': f'Bạn không có quyền truy cập endpoint này. Cần quyền: {", ".join(allowed_roles)}',
@@ -80,7 +89,7 @@ def role_required(*allowed_roles):
                             'username': current_user.username,
                             'user_type': current_user.user_type,
                             'user_id': current_user.user_id,
-                            'department': current_user.teacher.department if current_user.user_type == UserType.TEACHER.value else None,
+                            'department':department_name,
                         },
                         'required_roles': list(allowed_roles),
                         'endpoint': f.__name__,

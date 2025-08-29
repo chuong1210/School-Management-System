@@ -20,8 +20,8 @@ class Config:
     JWT_ALGORITHM = 'HS256'
     
     # Redis config for token blacklist
-    # REDIS_URL = os.environ.get('REDIS_UL') or 'redis://localhost:6379/0'
-    REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/0")
+    REDIS_URL = os.environ.get('REDIS_URL') or 'redis://localhost:6379/0'
+    # REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/0")
 
     # CORS config
     CORS_ORIGINS = ["http://localhost:3000", "http://127.0.0.1:3000"]
