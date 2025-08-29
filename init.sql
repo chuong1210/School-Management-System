@@ -65,7 +65,8 @@ CREATE TABLE   IF  NOT EXISTS classes (
  ClassID INT PRIMARY KEY AUTO_INCREMENT,
  CourseID INT NOT NULL,
  TeacherID INT,
- Semester VARCHAR(50) NOT NULL,
+Semester ENUM('Học kỳ 1', 'Học kỳ 2', 'Học kỳ hè') NOT NULL,
+
  AcademicYear VARCHAR(10) NOT NULL,
  MaxCapacity INT,
  CurrentEnrollment INT DEFAULT 0,
