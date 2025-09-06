@@ -2,7 +2,7 @@ from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 import bcrypt
 from enum import Enum
-from sqlalchemy import CheckConstraint
+from sqlalchemy import CheckConstraint, Enum as SqlEnum
 
 db = SQLAlchemy()
 
@@ -23,7 +23,10 @@ class EnrollmentStatus(Enum):
     FAILED ="Rớt môn"
     PASSED="Đậu"
 
-
+class SemesterEnum(Enum):
+    HOCKY1 = "Học kỳ 1"
+    HOCKY2 = "Học kỳ 2"
+    HOCKYHE = "Học kỳ hè"
 class Department(db.Model):
     __tablename__ = 'department'
     
@@ -159,7 +162,9 @@ class Class(db.Model):
     class_id = db.Column('ClassID', db.Integer, primary_key=True, autoincrement=True)
     course_id = db.Column('CourseID', db.Integer, db.ForeignKey('courses.CourseID'), nullable=False)
     teacher_id = db.Column('TeacherID', db.Integer, db.ForeignKey('teachers.TeacherID'))
-    semester = db.Column('Semester', db.String(50), nullable=False)
+    # semester = db.Column('Semester', db.String(50), nullable=False)
+    semester = db.Column(SqlEnum(SemesterEnum, native_enum=False), nullable=False)  
+
     academic_year = db.Column('AcademicYear', db.String(10), nullable=False)
     max_capacity = db.Column('MaxCapacity', db.Integer)
     current_enrollment = db.Column('CurrentEnrollment', db.Integer, default=0)

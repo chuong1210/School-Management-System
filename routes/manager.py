@@ -7,6 +7,7 @@ from models import (
     UserType, ClassStatus, EnrollmentStatus,Schedule,Teacher, User,Student
 )
 from decorators import manager_required
+from sqlalchemy import func
 
 # Import helpers
 from .helpers import error_response, success_response, get_current_semester, get_current_academic_year, calculate_system_health_score
@@ -760,6 +761,8 @@ def get_department_statistics(current_user):
     """Get comprehensive department statistics"""
     try:
         department_id = request.args.get('department_id', type=int)
+        department_name = request.args.get('department_name', type=str)
+
         semester = request.args.get('semester')
         academic_year = request.args.get('academic_year')
         
@@ -768,6 +771,14 @@ def get_department_statistics(current_user):
             departments = [Department.query.get(department_id)]
             if not departments[0]:
                 return error_response('DEPARTMENT_NOT_FOUND', 'Khoa không tồn tại.', status_code=404)
+        elif department_name:
+       
+            dept = Department.query.filter(
+                func.unaccent(Department.department_name).ilike(func.unaccent(department_name))
+            ).first()
+            if not dept:
+                return error_response('DEPARTMENT_NOT_FOUND', f'Không tìm thấy khoa: {department_name}', status_code=404)
+            departments = [dept]
         else:
             departments = Department.query.all()
         
@@ -869,11 +880,24 @@ def get_department_personnel_statistics(current_user):
     """Get comprehensive personnel statistics by department"""
     try:
         department_id = request.args.get('department_id', type=int)
+        department_name = request.args.get('department_name', type=str)
+
         
         if department_id:
             departments = [Department.query.get(department_id)]
             if not departments[0]:
                 return error_response('DEPARTMENT_NOT_FOUND', 'Khoa không tồn tại.', status_code=404)
+        elif department_name:
+            # dept = Department.query.filter(
+            #     Department.department_name.ilike(department_name)
+            # ).first()
+       
+            dept = Department.query.filter(
+                func.unaccent(Department.department_name).ilike(func.unaccent(department_name))
+            ).first()
+            if not dept:
+                return error_response('DEPARTMENT_NOT_FOUND', f'Không tìm thấy khoa: {department_name}', status_code=404)
+            departments = [dept]
         else:
             departments = Department.query.all()
         
@@ -973,6 +997,8 @@ def get_class_offering_statistics(current_user):
     """Get class offering statistics by department and semester"""
     try:
         department_id = request.args.get('department_id', type=int)
+        department_name = request.args.get('department_name', type=str)
+
         semester = request.args.get('semester')
         academic_year = request.args.get('academic_year')
         
@@ -986,6 +1012,15 @@ def get_class_offering_statistics(current_user):
             departments = [Department.query.get(department_id)]
             if not departments[0]:
                 return error_response('DEPARTMENT_NOT_FOUND', 'Khoa không tồn tại.', status_code=404)
+        elif department_name:
+         
+       
+            dept = Department.query.filter(
+                func.unaccent(Department.department_name).ilike(func.unaccent(department_name))
+            ).first()
+            if not dept:
+                return error_response('DEPARTMENT_NOT_FOUND', f'Không tìm thấy khoa: {department_name}', status_code=404)
+            departments = [dept]
         else:
             departments = Department.query.all()
         
@@ -1218,13 +1253,15 @@ def export_department_report(current_user):
     try:
         data = request.get_json()
         department_id = data.get('department_id')
+        department_name = data.get('department_name')
+
         semester = data.get('semester')
         academic_year = data.get('academic_year')
         export_format = data.get('format', 'json')  # json, csv options
         
         if not department_id:
-            return error_response('MISSING_DEPARTMENT_ID', 'Cần cung cấp department_id.')
-        
+                department = Department.query.get(department_name)
+
         department = Department.query.get(department_id)
         if not department:
             return error_response('DEPARTMENT_NOT_FOUND', 'Khoa không tồn tại.', status_code=404)
